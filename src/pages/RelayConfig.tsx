@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play, FolderOpen, FileText, RefreshCw, Search, Edit3 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play, FolderOpen, FileText, RefreshCw, Search, Edit3, Download } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile } from "@/lib/tauri";
-import type { ConfigFile, ConfigKey } from "@/lib/tauri";
+import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile, tryFetchModels } from "@/lib/tauri";
+import type { ConfigFile, ConfigKey, ModelInfo } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 // ── Default configurations ──────────────────────────────────────
@@ -121,6 +121,41 @@ export default function RelayConfig() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  // ── Model fetching ──
+  const [fetchingModels, setFetchingModels] = useState<string | null>(null);
+  const [fetchedModelList, setFetchedModelList] = useState<ModelInfo[]>([]);
+  const [showModelDropdown, setShowModelDropdown] = useState<string | null>(null);
+
+  const handleFetchModels = async (prefix: string) => {
+    const config = prefix === "codex" ? codexConfig : claudeConfig;
+    const apiKey = config[`${prefix}_api_key`] || "";
+    const baseUrl = config[`${prefix}_base_url`] || "";
+    if (!apiKey) {
+      setMsg({ type: "err", text: "请先填写 API 密钥" });
+      setTimeout(() => setMsg(null), 2500);
+      return;
+    }
+    setFetchingModels(prefix);
+    try {
+      const models = await tryFetchModels(prefix === "codex" ? "openai" : "anthropic", apiKey, baseUrl);
+      setFetchedModelList(models);
+      setShowModelDropdown(prefix);
+    } catch (err) {
+      setMsg({ type: "err", text: `获取失败: ${err}` });
+      setTimeout(() => setMsg(null), 2500);
+    }
+    setFetchingModels(null);
+  };
+
+  const selectModel = (prefix: string, modelId: string) => {
+    if (prefix === "codex") {
+      updateCodex("codex_model", modelId);
+    } else {
+      updateClaude("claude_model", modelId);
+    }
+    setShowModelDropdown(null);
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
@@ -177,10 +212,31 @@ export default function RelayConfig() {
             </div>
           </Field>
           <Field label="模型">
-            <input type="text" value={codexConfig.codex_model || ""}
-              onChange={(e) => updateCodex("codex_model", e.target.value)}
-              disabled={!editingCodex}
-              className={cn("input-field w-56 text-sm font-mono", !editingCodex && "opacity-60")} />
+            <div className="relative">
+              <div className="flex gap-2">
+                <input type="text" value={codexConfig.codex_model || ""}
+                  onChange={(e) => updateCodex("codex_model", e.target.value)}
+                  disabled={!editingCodex}
+                  className={cn("input-field flex-1 text-sm font-mono", !editingCodex && "opacity-60")} />
+                <button type="button" onClick={() => handleFetchModels("codex")}
+                  disabled={!editingCodex || fetchingModels === "codex"}
+                  className="flex items-center gap-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 shrink-0">
+                  {fetchingModels === "codex" ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  获取模型
+                </button>
+              </div>
+              {showModelDropdown === "codex" && fetchedModelList.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">
+                  {fetchedModelList.map((m) => (
+                    <button key={m.id} onClick={() => selectModel("codex", m.id)}
+                      className={cn("flex w-full items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-500/10",
+                        codexConfig.codex_model === m.id ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300")}>
+                      <span className="truncate font-mono">{m.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Max Tokens">
@@ -260,10 +316,31 @@ export default function RelayConfig() {
             </div>
           </Field>
           <Field label="模型">
-            <input type="text" value={claudeConfig.claude_model || ""}
-              onChange={(e) => updateClaude("claude_model", e.target.value)}
-              disabled={!editingClaude}
-              className={cn("input-field w-72 text-sm font-mono", !editingClaude && "opacity-60")} />
+            <div className="relative">
+              <div className="flex gap-2">
+                <input type="text" value={claudeConfig.claude_model || ""}
+                  onChange={(e) => updateClaude("claude_model", e.target.value)}
+                  disabled={!editingClaude}
+                  className={cn("input-field flex-1 text-sm font-mono", !editingClaude && "opacity-60")} />
+                <button type="button" onClick={() => handleFetchModels("claude")}
+                  disabled={!editingClaude || fetchingModels === "claude"}
+                  className="flex items-center gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 shrink-0">
+                  {fetchingModels === "claude" ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  获取模型
+                </button>
+              </div>
+              {showModelDropdown === "claude" && fetchedModelList.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">
+                  {fetchedModelList.map((m) => (
+                    <button key={m.id} onClick={() => selectModel("claude", m.id)}
+                      className={cn("flex w-full items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-amber-50 dark:hover:bg-amber-500/10",
+                        claudeConfig.claude_model === m.id ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "text-gray-700 dark:text-gray-300")}>
+                      <span className="truncate font-mono">{m.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Max Tokens">
