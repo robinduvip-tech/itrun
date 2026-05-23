@@ -40,10 +40,10 @@ export default function LatencyChart({ data, isLoading }: LatencyChartProps) {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-2xl border border-surface-800/60 bg-surface-900/60 backdrop-blur-xl">
+      <div className="flex h-72 items-center justify-center rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-600 border-t-bridge-500" />
-          <p className="text-xs text-surface-500">加载中...</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">加载中...</p>
         </div>
       </div>
     );
@@ -52,10 +52,10 @@ export default function LatencyChart({ data, isLoading }: LatencyChartProps) {
   // Empty state
   if (data.length === 0) {
     return (
-      <div className="flex h-72 flex-col items-center justify-center gap-2 rounded-2xl border border-surface-800/60 bg-surface-900/60 p-6 backdrop-blur-xl">
-        <div className="rounded-full bg-surface-800 p-3">
+      <div className="flex h-72 flex-col items-center justify-center gap-2 rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 p-6 backdrop-blur-xl">
+        <div className="rounded-full bg-gray-100 dark:bg-surface-800 p-3">
           <svg
-            className="h-6 w-6 text-surface-500"
+            className="h-6 w-6 text-gray-400 dark:text-gray-500"
             width="24"
             height="24"
             viewBox="0 0 24 24"
@@ -69,7 +69,7 @@ export default function LatencyChart({ data, isLoading }: LatencyChartProps) {
             <polyline points="12 6 12 12 16 14" />
           </svg>
         </div>
-        <p className="text-sm text-surface-400">暂无延迟数据</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">暂无延迟数据</p>
         <p className="text-xs text-surface-600">
           启动代理并发送请求后，数据将显示在此处
         </p>
@@ -78,9 +78,9 @@ export default function LatencyChart({ data, isLoading }: LatencyChartProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-surface-800/60 bg-surface-900/60 p-6 backdrop-blur-xl">
+    <div className="rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 p-6 backdrop-blur-xl">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-white">供应商平均延迟</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">供应商平均延迟</h3>
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart

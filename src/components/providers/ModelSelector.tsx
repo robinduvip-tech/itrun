@@ -61,17 +61,17 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex w-full items-center justify-between rounded-xl border border-surface-700 bg-surface-900 px-4 py-2.5 text-sm transition-all duration-200",
+          "flex w-full items-center justify-between rounded-xl border border-gray-300 dark:border-surface-700 bg-gray-50 dark:bg-surface-900 px-4 py-2.5 text-sm transition-all duration-200",
           "hover:border-surface-600",
           isOpen && "border-bridge-500 ring-1 ring-bridge-500/30"
         )}
       >
         <div className="flex items-center gap-2.5 truncate">
-          <Layers className="h-4 w-4 shrink-0 text-surface-500" />
+          <Layers className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
           <span
             className={cn(
               "truncate",
-              value ? "text-white" : "text-surface-500"
+              value ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"
             )}
           >
             {selectedLabel}
@@ -79,7 +79,7 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-surface-500 transition-transform duration-200",
+            "h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500 transition-transform duration-200",
             isOpen && "rotate-180"
           )}
         />
@@ -87,18 +87,18 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-surface-700/60 bg-surface-900 shadow-2xl">
+        <div className="absolute left-0 right-0 z-50 mt-2 overflow-hidden rounded-xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900 shadow-2xl">
           {/* Search */}
-          <div className="border-b border-surface-800/60 p-2.5">
+          <div className="border-b border-gray-200 dark:border-surface-800/60 p-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-surface-500" />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 ref={inputRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="搜索模型..."
-                className="w-full rounded-lg border-0 bg-surface-800 py-2 pl-9 pr-3 text-xs text-white placeholder-surface-500 outline-none focus:ring-1 focus:ring-bridge-500/30"
+                className="w-full rounded-lg border-0 bg-gray-100 dark:bg-surface-800 py-2 pl-9 pr-3 text-xs text-gray-900 dark:text-white placeholder-surface-500 outline-none focus:ring-1 focus:ring-bridge-500/30"
               />
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
           {/* Model list */}
           <div className="max-h-64 overflow-y-auto py-1.5">
             {groupedModels.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-surface-500">
+              <div className="px-4 py-8 text-center text-xs text-gray-400 dark:text-gray-500">
                 {search
                   ? "未找到匹配的模型"
                   : "没有已配置的供应商或模型"}
@@ -115,7 +115,7 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
               groupedModels.map((group) => (
                 <div key={group.providerId}>
                   {/* Provider header */}
-                  <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-500">
+                  <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                     {group.providerName}
                   </div>
                   {group.models.map((model) => (
@@ -128,17 +128,17 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
                       }}
                       className={cn(
                         "flex w-full items-center gap-2 px-4 py-2 text-left text-xs transition-colors",
-                        "hover:bg-surface-800/80",
+                        "hover:bg-gray-100 dark:bg-surface-800/80",
                         value === model
                           ? "bg-bridge-500/10 text-bridge-400"
-                          : "text-surface-300"
+                          : "text-gray-600 dark:text-gray-300"
                       )}
                     >
                       <span
                         className={cn(
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded",
                           value === model
-                            ? "bg-bridge-500 text-white"
+                            ? "bg-bridge-500 text-gray-900 dark:text-white"
                             : "border border-surface-600"
                         )}
                       >

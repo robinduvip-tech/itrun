@@ -44,20 +44,20 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
       />
 
       {/* Panel */}
-      <div className="relative flex h-full w-full max-w-2xl animate-slide-up flex-col border-l border-surface-800/60 bg-surface-900/95 shadow-2xl backdrop-blur-xl">
+      <div className="relative flex h-full w-full max-w-2xl animate-slide-up flex-col border-l border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-800/60 px-6 py-4">
-          <h3 className="text-base font-semibold text-white">请求详情</h3>
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-surface-800/60 px-6 py-4">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">请求详情</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-200"
+            className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:bg-surface-800 hover:text-surface-200"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Metadata */}
-        <div className="grid grid-cols-2 gap-3 border-b border-surface-800/60 px-6 py-4">
+        <div className="grid grid-cols-2 gap-3 border-b border-gray-200 dark:border-surface-800/60 px-6 py-4">
           <MetaItem label="时间" value={new Date(request.created_at).toLocaleString("zh-CN")} />
           <MetaItem label="供应商" value={request.provider_id} />
           <MetaItem label="模型" value={request.model} mono />
@@ -72,14 +72,14 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b border-surface-800/60">
+        <div className="flex border-b border-gray-200 dark:border-surface-800/60">
           <button
             onClick={() => setActiveTab("request")}
             className={cn(
               "flex-1 px-6 py-3 text-center text-xs font-medium transition-colors",
               activeTab === "request"
                 ? "border-b-2 border-bridge-500 text-bridge-400"
-                : "text-surface-500 hover:text-surface-300"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
             )}
           >
             请求体 (Request Body)
@@ -90,7 +90,7 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
               "flex-1 px-6 py-3 text-center text-xs font-medium transition-colors",
               activeTab === "response"
                 ? "border-b-2 border-bridge-500 text-bridge-400"
-                : "text-surface-500 hover:text-surface-300"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
             )}
           >
             响应体 (Response Body)
@@ -107,7 +107,7 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
                 activeTab
               )
             }
-            className="absolute right-4 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-surface-800 px-2.5 py-1.5 text-xs text-surface-400 transition-colors hover:bg-surface-700 hover:text-surface-200"
+            className="absolute right-4 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-gray-100 dark:bg-surface-800 px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400 transition-colors hover:bg-surface-700 hover:text-surface-200"
           >
             {copiedKey === activeTab ? (
               <>
@@ -147,13 +147,13 @@ function MetaItem({
 }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-surface-500">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
         {label}
       </p>
       {typeof value === "string" ? (
         <p
           className={cn(
-            "truncate text-xs text-surface-300",
+            "truncate text-xs text-gray-600 dark:text-gray-300",
             mono && "font-mono"
           )}
         >
@@ -208,7 +208,7 @@ function SyntaxHighlightedJSON({ json }: { json: string }) {
         }
         if (token === "null") {
           return (
-            <span key={i} className="text-surface-500">
+            <span key={i} className="text-gray-400 dark:text-gray-500">
               {token}
             </span>
           );
@@ -222,7 +222,7 @@ function SyntaxHighlightedJSON({ json }: { json: string }) {
         }
         if (token.match(/^[{}[\]:,]$/)) {
           return (
-            <span key={i} className="text-surface-400">
+            <span key={i} className="text-gray-500 dark:text-gray-400">
               {token}
             </span>
           );

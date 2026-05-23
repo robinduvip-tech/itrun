@@ -2,42 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light / Dark Theme Variables ─────────────────────────── */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: #ffffff;
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-secondary: rgba(0, 0, 0, 0.05);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --accent: #4f46e5;
+  --accent-light: rgba(79, 70, 229, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-track: transparent;
+}
+
+.dark {
+  --bg-primary: #060b14;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --bg-card: rgba(15, 23, 42, 0.6);
+  --bg-card-hover: rgba(15, 23, 42, 0.8);
+  --bg-input: #0f172a;
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --accent: #818cf8;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --scrollbar-thumb: #334155;
+  --scrollbar-track: transparent;
+}
+
 @layer base {
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    @apply bg-surface-950 text-white font-sans;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-surface-700 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-600;
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
-  ::selection {
-    @apply bg-bridge-500/30 text-white;
-  }
+  ::selection { background: var(--accent-light); color: var(--text-primary); }
 }
 
 @layer components {
   .glass {
-    @apply bg-surface-900/60 backdrop-blur-xl border border-surface-800/50;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
   }
 
   .glass-card {
@@ -45,73 +78,67 @@
   }
 
   .glass-card:hover {
-    @apply border-surface-700/50;
+    border-color: rgba(99, 102, 241, 0.15);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  }
+  .dark .glass-card:hover {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   }
 
-  .glow-border {
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2),
-                0 0 20px rgba(99, 102, 241, 0.1);
-  }
-
   .btn-primary {
-    @apply bg-bridge-600 hover:bg-bridge-500 text-white font-medium
-           px-4 py-2 rounded-xl transition-all duration-200
-           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply font-medium px-4 py-2 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    background: var(--accent);
+    color: #ffffff;
   }
+  .btn-primary:hover { opacity: 0.9; }
 
   .btn-secondary {
-    @apply bg-surface-800 hover:bg-surface-700 text-surface-200 font-medium
-           px-4 py-2 rounded-xl transition-all duration-200
-           border border-surface-700 hover:border-surface-600
-           active:scale-95;
+    @apply font-medium px-4 py-2 rounded-xl transition-all duration-200 border active:scale-95;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-color: var(--border-primary);
+  }
+  .btn-secondary:hover {
+    border-color: var(--text-tertiary);
+    color: var(--text-primary);
   }
 
   .btn-danger {
-    @apply bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium
-           px-4 py-2 rounded-xl transition-all duration-200
-           border border-red-500/20 hover:border-red-500/30
-           active:scale-95;
+    @apply font-medium px-4 py-2 rounded-xl transition-all duration-200 border active:scale-95;
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.15);
   }
+  .btn-danger:hover { background: rgba(239, 68, 68, 0.15); }
 
   .input-field {
-    @apply bg-surface-900 border border-surface-700 rounded-xl px-4 py-2.5
-           text-white placeholder-surface-500
-           focus:outline-none focus:border-bridge-500 focus:ring-1 focus:ring-bridge-500/30
-           transition-all duration-200 w-full;
+    @apply rounded-xl px-4 py-2.5 transition-all duration-200 w-full outline-none;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
   }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .input-field::placeholder { color: var(--text-tertiary); }
 
   .badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium;
-  }
-
-  .badge-success {
-    @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;
-  }
-
-  .badge-warning {
-    @apply badge bg-amber-500/15 text-amber-400 border border-amber-500/20;
-  }
-
-  .badge-error {
-    @apply badge bg-red-500/15 text-red-400 border border-red-500/20;
-  }
-
-  .badge-info {
-    @apply badge bg-sky-500/15 text-sky-400 border border-sky-500/20;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border;
   }
 
   .code-block {
-    @apply bg-surface-950 border border-surface-800 rounded-xl p-4
-           font-mono text-sm text-surface-300 overflow-auto;
+    @apply rounded-xl p-4 font-mono text-sm overflow-auto;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-bridge-400 to-bridge-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-indigo-500 to-indigo-400 bg-clip-text text-transparent;
   }
-
   .animate-in {
     animation: fadeIn 0.3s ease-out, slideUp 0.3s ease-out;
   }

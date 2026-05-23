@@ -22,13 +22,13 @@ export default function Sidebar() {
   const location = useLocation();
 
   return (
-    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-surface-800 bg-surface-900/80 backdrop-blur-xl">
+    <aside className="flex h-full w-56 shrink-0 flex-col border-r backdrop-blur-xl" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
       {/* Logo */}
-      <div className="flex h-14 items-center gap-3 border-b border-surface-800 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-bridge-500/20">
-          <Link2 className="h-4 w-4 text-bridge-400" />
+      <div className="flex h-14 items-center gap-3 border-b px-4" style={{ borderColor: 'var(--border-primary)' }}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: 'var(--accent-light)' }}>
+          <Link2 className="h-4 w-4" style={{ color: 'var(--accent)' }} />
         </div>
-        <span className="text-lg font-semibold tracking-tight text-white">
+        <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           iTrun
         </span>
       </div>
@@ -44,8 +44,8 @@ export default function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "bg-bridge-500/15 text-bridge-400"
-                  : "text-surface-400 hover:bg-surface-800/50 hover:text-surface-200"
+                  ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-200"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -59,29 +59,29 @@ export default function Sidebar() {
       </nav>
 
       {/* Proxy Status Indicator */}
-      <div className="border-t border-surface-800 p-4">
-        <div className="flex items-center gap-3 rounded-lg bg-surface-800/50 px-3 py-2.5">
+      <div className="border-t p-4" style={{ borderColor: 'var(--border-primary)' }}>
+        <div className="flex items-center gap-3 rounded-lg px-3 py-2.5" style={{ background: 'var(--bg-tertiary)' }}>
           <div className="relative flex h-2.5 w-2.5 items-center justify-center">
             <span
               className={cn(
                 "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
-                isRunning ? "bg-emerald-400" : "bg-surface-500"
+                isRunning ? "bg-emerald-400" : "bg-gray-400"
               )}
               style={{ animationDuration: isRunning ? "2s" : "0s" }}
             />
             <span
               className={cn(
                 "relative inline-flex h-2 w-2 rounded-full",
-                isRunning ? "bg-emerald-500" : "bg-surface-500"
+                isRunning ? "bg-emerald-500" : "bg-gray-400"
               )}
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-surface-300">
+            <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               {isRunning ? "代理运行中" : "代理已停止"}
             </span>
             {isRunning && port > 0 && (
-              <span className="text-xs text-surface-500">端口 {port}</span>
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>端口 {port}</span>
             )}
           </div>
         </div>

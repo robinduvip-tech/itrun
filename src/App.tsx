@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
@@ -7,11 +6,6 @@ import History from "@/pages/History";
 import Settings from "@/pages/Settings";
 
 function App() {
-  useEffect(() => {
-    // Default dark mode on mount
-    document.documentElement.classList.add("dark");
-  }, []);
-
   return (
     <Routes>
       <Route element={<Layout />}>

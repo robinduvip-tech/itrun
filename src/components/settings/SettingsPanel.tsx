@@ -73,7 +73,7 @@ export default function SettingsPanel() {
       <div className="flex h-64 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-600 border-t-bridge-500" />
-          <p className="text-xs text-surface-500">加载设置...</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">加载设置...</p>
         </div>
       </div>
     );
@@ -86,7 +86,7 @@ export default function SettingsPanel() {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-bridge-500/20">
           <Settings className="h-4 w-4 text-bridge-400" />
         </div>
-        <h2 className="text-lg font-semibold text-white">设置</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">设置</h2>
       </div>
 
       {/* Error banner */}
@@ -108,7 +108,7 @@ export default function SettingsPanel() {
         <div className="space-y-4">
           {/* Port */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-surface-300">
+            <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
               代理端口
             </label>
             <input
@@ -119,7 +119,7 @@ export default function SettingsPanel() {
               max={65535}
               className="input-field w-32 text-sm"
             />
-            <p className="mt-1 text-xs text-surface-500">
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               默认端口 9876，修改后需重启代理
             </p>
           </div>
@@ -127,8 +127,8 @@ export default function SettingsPanel() {
           {/* Auto-start */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-surface-300">启动时自动开启代理</p>
-              <p className="text-xs text-surface-500">应用启动后自动运行代理服务</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">启动时自动开启代理</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">应用启动后自动运行代理服务</p>
             </div>
             <button
               type="button"
@@ -173,8 +173,8 @@ export default function SettingsPanel() {
           {/* Clear History */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-surface-300">清除请求历史</p>
-              <p className="text-xs text-surface-500">删除所有已记录的请求数据</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">清除请求历史</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">删除所有已记录的请求数据</p>
             </div>
             <button
               onClick={() => setShowClearConfirm(true)}
@@ -198,11 +198,11 @@ export default function SettingsPanel() {
           )}
 
           {/* DB Path */}
-          <div className="rounded-xl bg-surface-800/50 px-4 py-3">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-surface-500">
+          <div className="rounded-xl bg-gray-100 dark:bg-surface-800/50 px-4 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
               数据库路径
             </p>
-            <p className="mt-1 font-mono text-xs text-surface-400">
+            <p className="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
               {settings.db_path || "~/.itrun/data.db"}
             </p>
           </div>
@@ -213,18 +213,18 @@ export default function SettingsPanel() {
       <Section title="关于" icon={<ExternalLink className="h-4 w-4" />}>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-surface-400">应用名称</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">应用名称</span>
             <span className="text-xs font-medium text-surface-200">iTrun</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-surface-400">版本</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">版本</span>
             <span className="rounded-md bg-bridge-500/10 px-2 py-0.5 text-xs font-medium text-bridge-400">
               v0.1.0
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-surface-400">描述</span>
-            <span className="text-xs text-surface-300">
+            <span className="text-xs text-gray-500 dark:text-gray-400">描述</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300">
               AI API 代理 & 请求管理
             </span>
           </div>
@@ -238,14 +238,14 @@ export default function SettingsPanel() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowClearConfirm(false)}
           />
-          <div className="relative w-full max-w-sm animate-slide-up rounded-2xl border border-surface-700/60 bg-surface-900/95 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="relative w-full max-w-sm animate-slide-up rounded-2xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900/95 p-6 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/15">
                 <AlertTriangle className="h-5 w-5 text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">确认清除历史记录？</p>
-                <p className="mt-0.5 text-xs text-surface-400">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">确认清除历史记录？</p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                   此操作不可撤销，所有请求记录将被永久删除。
                 </p>
               </div>
@@ -289,8 +289,8 @@ function Section({
   return (
     <div className="glass-card">
       <div className="mb-5 flex items-center gap-2.5">
-        <span className="text-surface-400">{icon}</span>
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <span className="text-gray-500 dark:text-gray-400">{icon}</span>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
       </div>
       {children}
     </div>
@@ -315,7 +315,7 @@ function ThemeOption({
         "flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-3 text-xs font-medium transition-all duration-200",
         selected
           ? "border-bridge-500/40 bg-bridge-500/10 text-bridge-400"
-          : "border-surface-700 bg-surface-800/50 text-surface-400 hover:border-surface-600 hover:text-surface-300"
+          : "border-gray-300 dark:border-surface-700 bg-gray-100 dark:bg-surface-800/50 text-gray-500 dark:text-gray-400 hover:border-surface-600 hover:text-gray-600 dark:text-gray-300"
       )}
     >
       {icon}

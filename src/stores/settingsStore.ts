@@ -21,7 +21,7 @@ interface SettingsState {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: {},
-  theme: "dark",
+  theme: "light",
   proxyPort: 9876,
   isLoading: false,
   error: null,
@@ -30,7 +30,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const settings = await getSettings();
-      const theme = (settings.theme as Theme) || "dark";
+      const theme = (settings.theme as Theme) || "light";
       const proxyPort = parseInt(settings.proxy_port || "9876", 10) || 9876;
 
       set({

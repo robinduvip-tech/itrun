@@ -90,9 +90,9 @@ export default function StatsCard({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-surface-800/60",
-        "bg-surface-900/60 p-5 backdrop-blur-xl transition-all duration-300",
-        "hover:border-surface-700/60 hover:bg-surface-900/80",
+        "group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-surface-800/60",
+        "bg-gray-50 dark:bg-surface-900/60 p-5 backdrop-blur-xl transition-all duration-300",
+        "hover:border-gray-300 dark:border-surface-700/60 hover:bg-gray-50 dark:bg-surface-900/80",
         "ring-1 ring-inset",
         colors.ring
       )}
@@ -102,13 +102,13 @@ export default function StatsCard({
 
       <div className="relative flex items-start justify-between">
         <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-wider text-surface-400">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
             {title}
           </p>
-          <p className="text-2xl font-bold tabular-nums text-white">
+          <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-white">
             {formattedValue}
           </p>
-          <p className="truncate text-xs text-surface-500">{subtitle}</p>
+          <p className="truncate text-xs text-gray-400 dark:text-gray-500">{subtitle}</p>
           {hasTrend && (
             <div className="flex items-center gap-1 pt-1">
               {isPositiveTrend ? (

@@ -23,11 +23,11 @@ export default function LiveRequests() {
   const recentEntries = entries.slice(0, 10);
 
   return (
-    <div className="rounded-2xl border border-surface-800/60 bg-surface-900/60 backdrop-blur-xl">
+    <div className="rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-surface-800/60 px-6 py-4">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-surface-800/60 px-6 py-4">
         <div className="flex items-center gap-2.5">
-          <h3 className="text-sm font-semibold text-white">实时请求</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">实时请求</h3>
           {isRunning && (
             <span className="flex items-center gap-1 text-xs text-emerald-400">
               <span className="relative flex h-1.5 w-1.5">
@@ -38,7 +38,7 @@ export default function LiveRequests() {
             </span>
           )}
         </div>
-        <span className="text-xs text-surface-500">
+        <span className="text-xs text-gray-400 dark:text-gray-500">
           最近 {recentEntries.length} 条
         </span>
       </div>
@@ -60,10 +60,10 @@ export default function LiveRequests() {
       ) : recentEntries.length === 0 ? (
         /* Empty state */
         <div className="flex h-48 flex-col items-center justify-center gap-2">
-          <div className="rounded-full bg-surface-800 p-2.5">
-            <Clock className="h-5 w-5 text-surface-500" />
+          <div className="rounded-full bg-gray-100 dark:bg-surface-800 p-2.5">
+            <Clock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
           </div>
-          <p className="text-sm text-surface-400">等待请求...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">等待请求...</p>
           <p className="text-xs text-surface-600">
             {isRunning
               ? "代理正在运行，等待接收请求..."
@@ -75,23 +75,23 @@ export default function LiveRequests() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-surface-800/60 text-left">
-                <th className="px-6 py-3 text-xs font-medium text-surface-500">
+              <tr className="border-b border-gray-200 dark:border-surface-800/60 text-left">
+                <th className="px-6 py-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                   时间
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-surface-500">
+                <th className="px-6 py-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                   供应商
                 </th>
-                <th className="px-6 py-3 text-xs font-medium text-surface-500">
+                <th className="px-6 py-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                   模型
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-surface-500">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 dark:text-gray-500">
                   Token
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-surface-500">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 dark:text-gray-500">
                   延迟
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-surface-500">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-400 dark:text-gray-500">
                   状态
                 </th>
               </tr>
@@ -100,21 +100,21 @@ export default function LiveRequests() {
               {recentEntries.map((entry) => (
                 <tr
                   key={entry.id}
-                  className="border-b border-surface-800/30 transition-colors hover:bg-surface-800/30"
+                  className="border-b border-gray-200 dark:border-surface-800/30 transition-colors hover:bg-gray-100 dark:bg-surface-800/30"
                 >
-                  <td className="whitespace-nowrap px-6 py-3 text-xs text-surface-400">
+                  <td className="whitespace-nowrap px-6 py-3 text-xs text-gray-500 dark:text-gray-400">
                     {formatRelativeTime(entry.created_at)}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-3 text-xs text-surface-300">
+                  <td className="whitespace-nowrap px-6 py-3 text-xs text-gray-600 dark:text-gray-300">
                     {entry.provider_id}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-surface-400">
+                  <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">
                     {truncate(entry.model, 24)}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-surface-300">
+                  <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-gray-600 dark:text-gray-300">
                     {formatTokens(entry.tokens_used)}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-surface-300">
+                  <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-gray-600 dark:text-gray-300">
                     {formatLatency(entry.latency_ms)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-3 text-center text-xs">

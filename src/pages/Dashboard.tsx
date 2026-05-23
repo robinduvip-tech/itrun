@@ -1,4 +1,4 @@
-import { Activity, Zap, Clock, Cpu, Server } from "lucide-react";
+import { Activity, Zap, Clock, Server } from "lucide-react";
 import StatsCard from "@/components/dashboard/StatsCard";
 import TokenChart from "@/components/dashboard/TokenChart";
 import LatencyChart from "@/components/dashboard/LatencyChart";
@@ -11,8 +11,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">控制台</h1>
-        <p className="mt-1 text-sm text-surface-400">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">控制台</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           AI API 中转代理运行状态与用量概览
         </p>
       </div>
@@ -23,7 +23,7 @@ export default function Dashboard() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-28 animate-pulse rounded-2xl border border-surface-800/60 bg-surface-900/60 backdrop-blur-xl"
+              className="h-28 animate-pulse rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl"
             />
           ))}
         </div>

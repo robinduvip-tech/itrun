@@ -78,8 +78,8 @@ export default function Providers() {
     <div className="animate-in space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">供应商管理</h1>
-          <p className="mt-1 text-sm text-surface-400">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">供应商管理</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             配置 AI 服务供应商与模型
           </p>
         </div>
@@ -87,7 +87,7 @@ export default function Providers() {
 
       {/* Model Selector */}
       <div className="max-w-sm">
-        <label className="mb-1.5 block text-xs font-medium text-surface-300">
+        <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
           默认模型
         </label>
         <ModelSelector value={selectedModel} onChange={setSelectedModel} />
@@ -135,18 +135,18 @@ export default function Providers() {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setDeleteTarget(null)}
           />
-          <div className="relative w-full max-w-sm animate-slide-up rounded-2xl border border-surface-700/60 bg-surface-900/95 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="relative w-full max-w-sm animate-slide-up rounded-2xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900/95 p-6 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/15">
                 <AlertTriangle className="h-5 w-5 text-red-400" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   确认删除供应商？
                 </p>
-                <p className="mt-0.5 text-xs text-surface-400">
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                   将永久删除{" "}
-                  <span className="font-medium text-surface-300">
+                  <span className="font-medium text-gray-600 dark:text-gray-300">
                     {deleteTarget.name}
                   </span>{" "}
                   及其所有模型配置。此操作不可撤销。

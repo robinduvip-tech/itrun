@@ -160,13 +160,13 @@ export default function ProviderForm({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh]">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg animate-slide-up rounded-2xl border border-surface-700/60 bg-surface-900/95 shadow-2xl backdrop-blur-xl">
+      <div className="relative w-full max-w-lg animate-slide-up rounded-2xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-800/60 px-6 py-4">
-          <h3 className="text-base font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-surface-800/60 px-6 py-4">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
             {isEdit ? "编辑供应商" : "添加供应商"}
           </h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-800 hover:text-surface-200">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-surface-800 hover:text-surface-200">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -175,7 +175,7 @@ export default function ProviderForm({
         <div className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
           {/* Name */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-surface-300">
+            <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
               名称 <span className="text-red-400">*</span>
             </label>
             <input
@@ -190,7 +190,7 @@ export default function ProviderForm({
 
           {/* Provider Type */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-surface-300">供应商类型</label>
+            <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">供应商类型</label>
             <select value={providerType} onChange={(e) => setProviderType(e.target.value)} className="input-field appearance-none">
               {providerTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -200,7 +200,7 @@ export default function ProviderForm({
 
           {/* API Base */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-surface-300">
+            <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
               API 地址 <span className="text-red-400">*</span>
             </label>
             <input
@@ -215,8 +215,8 @@ export default function ProviderForm({
 
           {/* API Key */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-surface-300">
-              API 密钥 {isEdit && <span className="ml-1 text-surface-500">(留空则不修改)</span>}
+            <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
+              API 密钥 {isEdit && <span className="ml-1 text-gray-400 dark:text-gray-500">(留空则不修改)</span>}
             </label>
             <div className="relative">
               <input
@@ -226,7 +226,7 @@ export default function ProviderForm({
                 placeholder={isEdit ? "留空以保留现有密钥" : "sk-..."}
                 className="input-field pr-10"
               />
-              <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300">
+              <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300">
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -235,8 +235,8 @@ export default function ProviderForm({
           {/* Models */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-xs font-medium text-surface-300">
-                模型列表 <span className="text-surface-500">(每行一个)</span>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                模型列表 <span className="text-gray-400 dark:text-gray-500">(每行一个)</span>
               </label>
               {isEdit && (
                 <button
@@ -281,7 +281,7 @@ export default function ProviderForm({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-surface-800/60 px-6 py-4">
+        <div className="flex items-center justify-between border-t border-gray-200 dark:border-surface-800/60 px-6 py-4">
           <div>
             {isEdit && onTestConnection && (
               <button type="button" onClick={handleTest} disabled={isTestingThisProvider}

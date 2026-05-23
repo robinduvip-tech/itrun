@@ -65,7 +65,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-red-400">加载失败</p>
-          <p className="mt-1 text-xs text-surface-500">{error}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{error}</p>
         </div>
         <button onClick={loadHistory} className="btn-secondary text-sm">
           重试
@@ -80,7 +80,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
       <div className="flex items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             value={filters.search}
@@ -91,7 +91,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
           {filters.search && (
             <button
               onClick={() => setFilter("search", "")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-500 hover:text-surface-300"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -116,7 +116,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           {showStatusFilter && (
-            <div className="absolute right-0 top-full z-30 mt-2 w-36 overflow-hidden rounded-xl border border-surface-700/60 bg-surface-900 shadow-2xl">
+            <div className="absolute right-0 top-full z-30 mt-2 w-36 overflow-hidden rounded-xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900 shadow-2xl">
               {[
                 { value: "all", label: "全部状态" },
                 { value: "success", label: "成功" },
@@ -129,10 +129,10 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                     setShowStatusFilter(false);
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2 px-4 py-2.5 text-xs transition-colors hover:bg-surface-800/80",
+                    "flex w-full items-center gap-2 px-4 py-2.5 text-xs transition-colors hover:bg-gray-100 dark:bg-surface-800/80",
                     filters.status === opt.value
                       ? "bg-bridge-500/10 text-bridge-400"
-                      : "text-surface-300"
+                      : "text-gray-600 dark:text-gray-300"
                   )}
                 >
                   {filters.status === opt.value && (
@@ -151,30 +151,30 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
         {(filters.search || filters.status !== "all") && (
           <button
             onClick={clearFilters}
-            className="text-xs text-surface-500 transition-colors hover:text-surface-300"
+            className="text-xs text-gray-400 dark:text-gray-500 transition-colors hover:text-gray-600 dark:text-gray-300"
           >
             清除筛选
           </button>
         )}
 
         {/* Total count */}
-        <div className="ml-auto text-xs text-surface-500">
+        <div className="ml-auto text-xs text-gray-400 dark:text-gray-500">
           共 {totalCount} 条记录
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-surface-800/60 bg-surface-900/60 backdrop-blur-xl">
+      <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-surface-800/60">
+              <tr className="border-b border-gray-200 dark:border-surface-800/60">
                 {columns.map((col) => (
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
                     className={cn(
-                      "cursor-pointer select-none px-5 py-3.5 text-xs font-medium text-surface-500 transition-colors hover:text-surface-300",
+                      "cursor-pointer select-none px-5 py-3.5 text-xs font-medium text-gray-400 dark:text-gray-500 transition-colors hover:text-gray-600 dark:text-gray-300",
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
@@ -204,13 +204,13 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr
                     key={i}
-                    className="animate-pulse border-b border-surface-800/30"
+                    className="animate-pulse border-b border-gray-200 dark:border-surface-800/30"
                   >
                     {columns.map((col) => (
                       <td key={col.key} className="px-5 py-3.5">
                         <div
                           className={cn(
-                            "h-3 rounded bg-surface-800",
+                            "h-3 rounded bg-gray-100 dark:bg-surface-800",
                             col.align === "right" ? "ml-auto" : "",
                             i % 3 === 0
                               ? "w-16"
@@ -222,7 +222,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                       </td>
                     ))}
                     <td className="px-2 py-3.5">
-                      <div className="h-3 w-4 rounded bg-surface-800" />
+                      <div className="h-3 w-4 rounded bg-gray-100 dark:bg-surface-800" />
                     </td>
                   </tr>
                 ))
@@ -234,10 +234,10 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                     className="px-5 py-20"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <div className="rounded-full bg-surface-800 p-3">
-                        <Search className="h-6 w-6 text-surface-500" />
+                      <div className="rounded-full bg-gray-100 dark:bg-surface-800 p-3">
+                        <Search className="h-6 w-6 text-gray-400 dark:text-gray-500" />
                       </div>
-                      <p className="text-sm text-surface-400">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         {filters.search || filters.status !== "all"
                           ? "没有匹配的记录"
                           : "暂无请求历史"}
@@ -256,21 +256,21 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                   <tr
                     key={entry.id}
                     onClick={() => onSelect(entry)}
-                    className="group cursor-pointer border-b border-surface-800/30 transition-colors hover:bg-surface-800/40"
+                    className="group cursor-pointer border-b border-gray-200 dark:border-surface-800/30 transition-colors hover:bg-gray-100 dark:bg-surface-800/40"
                   >
-                    <td className="whitespace-nowrap px-5 py-3.5 text-xs text-surface-400">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-xs text-gray-500 dark:text-gray-400">
                       {formatRelativeTime(entry.created_at)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-xs text-surface-300">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-xs text-gray-600 dark:text-gray-300">
                       {entry.provider_id}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-surface-400">
+                    <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-gray-500 dark:text-gray-400">
                       {entry.model}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs tabular-nums text-surface-300">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs tabular-nums text-gray-600 dark:text-gray-300">
                       {formatLatency(entry.latency_ms)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs tabular-nums text-surface-300">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs tabular-nums text-gray-600 dark:text-gray-300">
                       {formatTokens(entry.tokens_used)}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-center text-xs">
@@ -288,7 +288,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
 
         {/* Load More */}
         {hasMore && entries.length > 0 && (
-          <div className="flex justify-center border-t border-surface-800/60 px-6 py-3">
+          <div className="flex justify-center border-t border-gray-200 dark:border-surface-800/60 px-6 py-3">
             <button
               onClick={loadMore}
               disabled={isLoadingMore}

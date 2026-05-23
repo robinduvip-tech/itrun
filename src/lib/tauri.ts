@@ -32,9 +32,11 @@ export interface ProviderInput {
 }
 
 export interface ModelInfo {
+  id: string;
   name: string;
-  provider_id: string;
   provider_name: string;
+  max_tokens: number;
+  pricing: Record<string, string>;
 }
 
 export interface HistoryEntry {

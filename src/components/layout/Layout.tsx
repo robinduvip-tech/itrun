@@ -40,7 +40,7 @@ export default function Layout() {
   }, [settingsLoaded, isRunning, isLoading, startProxy, proxyPort, refreshStatus]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-surface-950 text-surface-100">
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Sidebar */}
       <Sidebar />
 

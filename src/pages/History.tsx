@@ -33,10 +33,10 @@ export default function History() {
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={closeDetail}
             />
-            <div className="relative flex h-full w-full max-w-2xl items-center justify-center border-l border-surface-800/60 bg-surface-900/95 shadow-2xl backdrop-blur-xl">
+            <div className="relative flex h-full w-full max-w-2xl items-center justify-center border-l border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/95 shadow-2xl backdrop-blur-xl">
               <div className="flex flex-col items-center gap-3">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-600 border-t-bridge-500" />
-                <p className="text-xs text-surface-500">加载详情...</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">加载详情...</p>
               </div>
             </div>
           </div>

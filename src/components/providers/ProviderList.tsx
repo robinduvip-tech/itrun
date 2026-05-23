@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Server, Plus, Settings, Trash2, Zap, Key } from "lucide-react";
+import { Server, Plus, Settings, Trash2, Zap } from "lucide-react";
 import { useProviderStore } from "@/stores/providerStore";
 import { cn } from "@/lib/utils";
 import type { Provider } from "@/lib/tauri";
@@ -25,7 +25,7 @@ const typeColors: Record<string, string> = {
   deepseek: "bg-sky-500/15 text-sky-400 border-sky-500/20",
   qwen: "bg-violet-500/15 text-violet-400 border-violet-500/20",
   ollama: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  custom: "bg-surface-500/15 text-surface-400 border-surface-500/20",
+  custom: "bg-surface-500/15 text-gray-500 dark:text-gray-400 border-surface-500/20",
 };
 
 export default function ProviderList({
@@ -49,25 +49,25 @@ export default function ProviderList({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">供应商</h2>
-          <div className="h-9 w-28 animate-pulse rounded-lg bg-surface-800" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">供应商</h2>
+          <div className="h-9 w-28 animate-pulse rounded-lg bg-gray-100 dark:bg-surface-800" />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="animate-pulse rounded-2xl border border-surface-800/60 bg-surface-900/60 p-6 backdrop-blur-xl"
+              className="animate-pulse rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 p-6 backdrop-blur-xl"
             >
               <div className="mb-4 flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-surface-800" />
+                <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-surface-800" />
                 <div className="space-y-2">
-                  <div className="h-4 w-24 rounded bg-surface-800" />
-                  <div className="h-3 w-16 rounded bg-surface-800" />
+                  <div className="h-4 w-24 rounded bg-gray-100 dark:bg-surface-800" />
+                  <div className="h-3 w-16 rounded bg-gray-100 dark:bg-surface-800" />
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="h-3 w-full rounded bg-surface-800" />
-                <div className="h-3 w-3/4 rounded bg-surface-800" />
+                <div className="h-3 w-full rounded bg-gray-100 dark:bg-surface-800" />
+                <div className="h-3 w-3/4 rounded bg-gray-100 dark:bg-surface-800" />
               </div>
             </div>
           ))}
@@ -85,7 +85,7 @@ export default function ProviderList({
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-red-400">加载失败</p>
-          <p className="mt-1 text-xs text-surface-500">{error}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{error}</p>
         </div>
         <button
           onClick={() => {
@@ -105,21 +105,21 @@ export default function ProviderList({
     return (
       <div>
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">供应商</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">供应商</h2>
           <button onClick={onAdd} className="btn-primary flex items-center gap-2 text-sm">
             <Plus className="h-4 w-4" />
             添加供应商
           </button>
         </div>
         <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <div className="rounded-full bg-surface-800 p-5">
-            <Server className="h-10 w-10 text-surface-500" />
+          <div className="rounded-full bg-gray-100 dark:bg-surface-800 p-5">
+            <Server className="h-10 w-10 text-gray-400 dark:text-gray-500" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-surface-300">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
               还没有配置供应商
             </p>
-            <p className="mt-1 text-xs text-surface-500">
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               添加 AI 供应商以开始代理请求
             </p>
           </div>
@@ -136,7 +136,7 @@ export default function ProviderList({
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">供应商</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">供应商</h2>
         <button onClick={onAdd} className="btn-primary flex items-center gap-2 text-sm">
           <Plus className="h-4 w-4" />
           添加供应商
@@ -158,8 +158,8 @@ export default function ProviderList({
               key={provider.id}
               onClick={() => onEdit(provider)}
               className={cn(
-                "group cursor-pointer rounded-2xl border border-surface-800/60 bg-surface-900/60 p-5 backdrop-blur-xl transition-all duration-300",
-                "hover:border-surface-700/60 hover:bg-surface-900/80",
+                "group cursor-pointer rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 p-5 backdrop-blur-xl transition-all duration-300",
+                "hover:border-gray-300 dark:border-surface-700/60 hover:bg-gray-50 dark:bg-surface-900/80",
                 isDefault && "ring-1 ring-inset ring-bridge-500/20"
               )}
             >
@@ -177,7 +177,7 @@ export default function ProviderList({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-white">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         {provider.name}
                       </h3>
                       {isDefault && (
@@ -204,7 +204,7 @@ export default function ProviderList({
                       e.stopPropagation();
                       onEdit(provider);
                     }}
-                    className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-700 hover:text-surface-200"
+                    className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition-colors hover:bg-surface-700 hover:text-surface-200"
                     title="编辑"
                   >
                     <Settings className="h-3.5 w-3.5" />
@@ -214,7 +214,7 @@ export default function ProviderList({
                       e.stopPropagation();
                       onDelete(provider);
                     }}
-                    className="rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-red-500/15 hover:text-red-400"
+                    className="rounded-lg p-1.5 text-gray-400 dark:text-gray-500 transition-colors hover:bg-red-500/15 hover:text-red-400"
                     title="删除"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -223,7 +223,7 @@ export default function ProviderList({
               </div>
 
               {/* Bottom row: model count + status */}
-              <div className="flex items-center justify-between text-xs text-surface-500">
+              <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
                 <div className="flex items-center gap-1.5">
                   <Zap className="h-3 w-3" />
                   <span>{provider.models.length} 个模型</span>
@@ -231,7 +231,7 @@ export default function ProviderList({
                 <span
                   className={cn(
                     "text-xs",
-                    hasKey ? "text-emerald-400" : "text-surface-500"
+                    hasKey ? "text-emerald-400" : "text-gray-400 dark:text-gray-500"
                   )}
                 >
                   {hasKey ? "已配置" : "未配置密钥"}

@@ -39,9 +39,9 @@ export default function Header() {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-surface-800 bg-surface-900/50 px-6 backdrop-blur-md">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b px-6 backdrop-blur-md" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
       {/* Page Title */}
-      <h1 className="text-lg font-semibold text-white">{title}</h1>
+      <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h1>
 
       {/* Proxy Toggle */}
       <button
