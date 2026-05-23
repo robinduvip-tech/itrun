@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { X, Eye, EyeOff, Save, RefreshCw, AlertTriangle, Download } from "lucide-react";
+import { X, Eye, EyeOff, Save, RefreshCw, AlertTriangle, Download, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Provider, ProviderInput } from "@/lib/tauri";
-import { fetchProviderModels } from "@/lib/tauri";
+import type { Provider, ProviderInput, ModelInfo } from "@/lib/tauri";
+import { tryFetchModels, fetchProviderModels } from "@/lib/tauri";
 
 interface ProviderFormProps {
   isOpen: boolean;
@@ -15,17 +15,17 @@ interface ProviderFormProps {
 }
 
 const providerTypeOptions = [
-  { value: "openai", label: "OpenAI", models: "gpt-4o\ngpt-4o-mini\ngpt-4-turbo\ngpt-3.5-turbo" },
-  { value: "anthropic", label: "Anthropic (Claude/Opus)", models: "claude-opus-4-20250514\nclaude-sonnet-4-20250514\nclaude-haiku-3-5-20241022" },
-  { value: "kimi", label: "Kimi (Moonshot)", models: "moonshot-v1-8k\nmoonshot-v1-32k\nmoonshot-v1-128k" },
-  { value: "deepseek", label: "DeepSeek", models: "deepseek-chat\ndeepseek-reasoner" },
-  { value: "qwen", label: "Qwen (通义千问)", models: "qwen-turbo\nqwen-plus\nqwen-max\nqwen-max-longcontext" },
-  { value: "gemini", label: "Google Gemini", models: "gemini-2.5-pro-preview\ngemini-2.5-flash-preview\ngemini-2.0-flash" },
-  { value: "nvidia", label: "NVIDIA NIM", models: "meta/llama-3.3-70b-instruct\nnvidia/llama-3.1-nemotron-70b" },
-  { value: "groq", label: "Groq", models: "llama-3.3-70b-versatile\nmixtral-8x7b-32768\ngemma2-9b-it" },
-  { value: "siliconflow", label: "SiliconFlow", models: "Qwen/Qwen2.5-72B-Instruct\ndeepseek-ai/DeepSeek-V3\nmeta-llama/Llama-3.3-70B" },
-  { value: "xai", label: "xAI (Grok)", models: "grok-2-1212\ngrok-2-vision-1212" },
-  { value: "custom", label: "自定义", models: "" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic (Claude/Opus)" },
+  { value: "kimi", label: "Kimi (Moonshot)" },
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "qwen", label: "Qwen (通义千问)" },
+  { value: "gemini", label: "Google Gemini" },
+  { value: "nvidia", label: "NVIDIA NIM" },
+  { value: "groq", label: "Groq" },
+  { value: "siliconflow", label: "SiliconFlow" },
+  { value: "xai", label: "xAI (Grok)" },
+  { value: "custom", label: "自定义" },
 ];
 
 const defaultApiBases: Record<string, string> = {
@@ -45,6 +45,7 @@ const defaultApiBases: Record<string, string> = {
 interface FormErrors {
   name?: string;
   api_base?: string;
+  api_key?: string;
 }
 
 export default function ProviderForm({
@@ -62,13 +63,17 @@ export default function ProviderForm({
   const [providerType, setProviderType] = useState("openai");
   const [apiBase, setApiBase] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [models, setModels] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<boolean | null>(null);
+
+  // Model fetching state
+  const [fetchedModels, setFetchedModels] = useState<ModelInfo[]>([]);
+  const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [modelFetchError, setModelFetchError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   // Init form
   useEffect(() => {
@@ -77,14 +82,19 @@ export default function ProviderForm({
       setProviderType(provider.provider_type);
       setApiBase(provider.api_base);
       setApiKey("");
-      setModels(provider.models.join("\n"));
+      setSelectedModels(new Set(provider.models));
+      setHasFetched(true);
+      setFetchedModels(provider.models.map((m) => ({
+        id: m, name: m, provider_name: provider.name, max_tokens: 0, pricing: {},
+      })));
     } else {
       setName("");
       setProviderType("openai");
       setApiBase(defaultApiBases["openai"]);
       setApiKey("");
-      const opt = providerTypeOptions.find((o) => o.value === "openai");
-      setModels(opt?.models || "");
+      setFetchedModels([]);
+      setSelectedModels(new Set());
+      setHasFetched(false);
     }
     setErrors({});
     setTestResult(null);
@@ -92,12 +102,10 @@ export default function ProviderForm({
     setModelFetchError(null);
   }, [provider, isOpen]);
 
-  // Update default api_base and models when type changes
+  // Update default api_base when type changes
   useEffect(() => {
     if (!provider) {
       setApiBase(defaultApiBases[providerType] || "");
-      const opt = providerTypeOptions.find((o) => o.value === providerType);
-      setModels(opt?.models || "");
     }
   }, [providerType, provider]);
 
@@ -107,22 +115,20 @@ export default function ProviderForm({
     const newErrors: FormErrors = {};
     if (!name.trim()) newErrors.name = "供应商名称不能为空";
     if (!apiBase.trim()) newErrors.api_base = "API 地址不能为空";
+    if (!apiKey.trim() && !isEdit) newErrors.api_key = "API 密钥不能为空";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
     if (!validate()) return;
-    const modelList = models
-      .split("\n")
-      .map((m) => m.trim())
-      .filter((m) => m.length > 0);
+    const modelList = Array.from(selectedModels);
     const data: ProviderInput = {
       name: name.trim(),
       provider_type: providerType,
       api_base: apiBase.trim(),
       api_key: apiKey.trim(),
-      models: modelList.length > 0 ? modelList : [],
+      models: modelList,
     };
     await onSave(data);
   };
@@ -140,14 +146,23 @@ export default function ProviderForm({
   };
 
   const handleFetchModels = async () => {
-    if (!provider) return;
+    if (!apiKey.trim()) {
+      setErrors((p) => ({ ...p, api_key: "请先输入 API 密钥" }));
+      return;
+    }
     setIsFetchingModels(true);
     setModelFetchError(null);
     try {
-      const remoteModels = await fetchProviderModels(provider.id);
-      if (remoteModels.length > 0) {
-        setModels(remoteModels.map((m) => m.id).join("\n"));
+      let models: ModelInfo[];
+      if (isEdit && provider) {
+        models = await fetchProviderModels(provider.id);
+      } else {
+        models = await tryFetchModels(providerType, apiKey.trim(), apiBase.trim());
       }
+      setFetchedModels(models);
+      // Pre-select all fetched models
+      setSelectedModels(new Set(models.map((m) => m.id)));
+      setHasFetched(true);
     } catch (err) {
       setModelFetchError(err instanceof Error ? err.message : "获取模型列表失败");
     } finally {
@@ -155,24 +170,44 @@ export default function ProviderForm({
     }
   };
 
+  const toggleModel = (modelId: string) => {
+    setSelectedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) {
+        next.delete(modelId);
+      } else {
+        next.add(modelId);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedModels.size === fetchedModels.length) {
+      setSelectedModels(new Set());
+    } else {
+      setSelectedModels(new Set(fetchedModels.map((m) => m.id)));
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[4vh]">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg animate-slide-up rounded-2xl border border-gray-300 dark:border-surface-700/60 bg-gray-50 dark:bg-surface-900/95 shadow-2xl backdrop-blur-xl">
+      <div className="relative w-full max-w-lg animate-slide-up rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 dark:border-surface-800/60 px-6 py-4">
+        <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: 'var(--border-primary)' }}>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">
             {isEdit ? "编辑供应商" : "添加供应商"}
           </h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-surface-800 hover:text-surface-200">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-800">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-5">
           {/* Name */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
@@ -183,7 +218,7 @@ export default function ProviderForm({
               value={name}
               onChange={(e) => { setName(e.target.value); if (errors.name) setErrors((p) => ({ ...p, name: undefined })); }}
               placeholder="例如：我的 OpenAI"
-              className={cn("input-field", errors.name && "border-red-500 focus:border-red-500 focus:ring-red-500/30")}
+              className={cn("input-field", errors.name && "border-red-500")}
             />
             {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
           </div>
@@ -208,7 +243,7 @@ export default function ProviderForm({
               value={apiBase}
               onChange={(e) => { setApiBase(e.target.value); if (errors.api_base) setErrors((p) => ({ ...p, api_base: undefined })); }}
               placeholder="https://api.openai.com/v1"
-              className={cn("input-field", errors.api_base && "border-red-500 focus:border-red-500 focus:ring-red-500/30")}
+              className={cn("input-field", errors.api_base && "border-red-500")}
             />
             {errors.api_base && <p className="mt-1 text-xs text-red-400">{errors.api_base}</p>}
           </div>
@@ -216,51 +251,103 @@ export default function ProviderForm({
           {/* API Key */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">
-              API 密钥 {isEdit && <span className="ml-1 text-gray-400 dark:text-gray-500">(留空则不修改)</span>}
+              API 密钥 <span className="text-red-400">*</span>
+              {isEdit && <span className="ml-1 text-gray-400">(留空则不修改)</span>}
             </label>
             <div className="relative">
               <input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e) => { setApiKey(e.target.value); if (errors.api_key) setErrors((p) => ({ ...p, api_key: undefined })); }}
                 placeholder={isEdit ? "留空以保留现有密钥" : "sk-..."}
-                className="input-field pr-10"
+                className={cn("input-field pr-10", errors.api_key && "border-red-500")}
               />
-              <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-300">
+              <button type="button" onClick={() => setShowKey(!showKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.api_key && <p className="mt-1 text-xs text-red-400">{errors.api_key}</p>}
           </div>
 
-          {/* Models */}
+          {/* Models Section */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                模型列表 <span className="text-gray-400 dark:text-gray-500">(每行一个)</span>
+                模型列表
+                {hasFetched && (
+                  <span className="ml-1 text-gray-400">
+                    (已选 {selectedModels.size}/{fetchedModels.length})
+                  </span>
+                )}
               </label>
-              {isEdit && (
+            </div>
+
+            {/* Fetch button or model list */}
+            {!hasFetched ? (
+              <button
+                type="button"
+                onClick={handleFetchModels}
+                disabled={isFetchingModels}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-sm font-medium transition-all duration-200 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/5 disabled:opacity-50"
+                style={{ borderColor: isFetchingModels ? 'var(--accent)' : 'var(--border-primary)', color: isFetchingModels ? 'var(--accent)' : 'var(--text-tertiary)' }}
+              >
+                {isFetchingModels ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {isFetchingModels ? "正在获取模型列表..." : "获取模型列表"}
+              </button>
+            ) : (
+              <div className="space-y-1.5 rounded-xl border p-3" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+                {/* Select all toggle */}
                 <button
-                  type="button"
+                  onClick={toggleAll}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-surface-700"
+                >
+                  <Check className={cn("h-3.5 w-3.5", selectedModels.size === fetchedModels.length ? "text-indigo-500" : "text-gray-400")} />
+                  {selectedModels.size === fetchedModels.length ? "取消全选" : "全选"}
+                </button>
+                {/* Model checkboxes */}
+                <div className="max-h-48 space-y-0.5 overflow-y-auto">
+                  {fetchedModels.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => toggleModel(m.id)}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
+                        selectedModels.has(m.id)
+                          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                          : "text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-surface-700/50"
+                      )}
+                    >
+                      <div className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                        selectedModels.has(m.id)
+                          ? "border-indigo-500 bg-indigo-500"
+                          : "border-gray-300 dark:border-gray-600"
+                      )}>
+                        {selectedModels.has(m.id) && <Check className="h-3 w-3 text-white" />}
+                      </div>
+                      <span className="truncate font-mono">{m.id}</span>
+                    </button>
+                  ))}
+                </div>
+                {/* Refresh button */}
+                <button
                   onClick={handleFetchModels}
                   disabled={isFetchingModels}
-                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs text-bridge-400 hover:bg-bridge-500/10 disabled:opacity-50 transition-colors"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs text-indigo-500 transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50"
                 >
                   {isFetchingModels ? (
                     <RefreshCw className="h-3 w-3 animate-spin" />
                   ) : (
-                    <Download className="h-3 w-3" />
+                    <RefreshCw className="h-3 w-3" />
                   )}
-                  从 API 获取
+                  重新获取
                 </button>
-              )}
-            </div>
-            <textarea
-              value={models}
-              onChange={(e) => setModels(e.target.value)}
-              placeholder="gpt-4o&#10;gpt-4o-mini"
-              rows={5}
-              className="input-field resize-none font-mono text-xs"
-            />
+              </div>
+            )}
             {modelFetchError && (
               <p className="mt-1 flex items-center gap-1 text-xs text-red-400">
                 <AlertTriangle className="h-3 w-3" /> {modelFetchError}
@@ -281,7 +368,7 @@ export default function ProviderForm({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-200 dark:border-surface-800/60 px-6 py-4">
+        <div className="flex items-center justify-between border-t px-6 py-4" style={{ borderColor: 'var(--border-primary)' }}>
           <div>
             {isEdit && onTestConnection && (
               <button type="button" onClick={handleTest} disabled={isTestingThisProvider}
@@ -293,7 +380,7 @@ export default function ProviderForm({
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="btn-secondary text-sm">取消</button>
-            <button onClick={handleSave} disabled={isSaving}
+            <button onClick={handleSave} disabled={isSaving || !hasFetched || selectedModels.size === 0}
               className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50">
               {isSaving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {isSaving ? "保存中..." : "保存"}

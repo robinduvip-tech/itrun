@@ -164,6 +164,18 @@ export async function fetchProviderModels(id: string): Promise<ModelInfo[]> {
   return invoke<ModelInfo[]>("fetch_provider_models", { id });
 }
 
+export async function tryFetchModels(
+  providerType: string,
+  apiKey: string,
+  baseUrl: string
+): Promise<ModelInfo[]> {
+  return invoke<ModelInfo[]>("try_fetch_models", {
+    providerType,
+    apiKey,
+    baseUrl,
+  });
+}
+
 export async function listAllModels(): Promise<ModelInfo[]> {
   return invoke<ModelInfo[]>("list_all_models_cmd");
 }

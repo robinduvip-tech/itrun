@@ -145,6 +145,17 @@ pub async fn set_default_provider_cmd(
 }
 
 #[command]
+pub async fn try_fetch_models(
+    provider_type: String,
+    api_key: String,
+    base_url: String,
+) -> Result<Vec<ModelInfo>, String> {
+    let provider = provider::build_provider(&provider_type, &api_key, &base_url, &serde_json::Value::Null)?
+        .ok_or_else(|| format!("Unsupported provider type: {}", provider_type))?;
+    provider.list_models().await
+}
+
+#[command]
 pub async fn fetch_provider_models(
     id: String,
 ) -> Result<Vec<ModelInfo>, String> {

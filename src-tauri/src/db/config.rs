@@ -10,12 +10,29 @@ pub struct ProviderConfig {
     pub api_key: String,
     #[serde(rename = "api_base")]
     pub base_url: String,
-    #[serde(skip_serializing_if = "Value::is_null")]
+    #[serde(skip_serializing_if = "Value::is_null", default)]
     pub config: Value,
     pub is_default: bool,
     pub enabled: bool,
     pub created_at: String,
     pub updated_at: String,
+    /// Extracted from config.models — serialized as a flat list for frontend
+    #[serde(default = "empty_models")]
+    pub models: Vec<String>,
+}
+
+fn empty_models() -> Vec<String> { Vec::new() }
+
+impl ProviderConfig {
+    /// Populate `models` from `config.models` after loading from DB
+    pub fn with_models(mut self) -> Self {
+        self.models = self.config
+            .get("models")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default();
+        self
+    }
 }
 
 pub fn insert_provider(
@@ -130,12 +147,13 @@ pub fn get_provider(conn: &Connection, id: &str) -> Result<Option<ProviderConfig
                 enabled: row.get::<_, i32>(7)? != 0,
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
+                models: Vec::new(),
             })
         })
         .optional()
         .map_err(|e| format!("Failed to query provider: {}", e))?;
 
-    Ok(result)
+    Ok(result.map(|p| p.with_models()))
 }
 
 pub fn list_providers(conn: &Connection) -> Result<Vec<ProviderConfig>, String> {
@@ -163,13 +181,14 @@ pub fn list_providers(conn: &Connection) -> Result<Vec<ProviderConfig>, String> 
                 enabled: row.get::<_, i32>(7)? != 0,
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
+                models: Vec::new(),
             })
         })
         .map_err(|e| format!("Failed to query providers: {}", e))?;
 
     let mut providers = Vec::new();
     for row in rows {
-        providers.push(row.map_err(|e| format!("Row error: {}", e))?);
+        providers.push(row.map_err(|e| format!("Row error: {}", e))?.with_models());
     }
 
     Ok(providers)
