@@ -1,0 +1,5 @@
+# CodexBridge cargo config
+# For MSVC compilation, set up environment:
+#   export VSINSTALLDIR="/f/vsbuildtools"
+#   export PATH="/f/vsbuildtools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64:$PATH"
+#   export LIB="/f/vsbuildtools/VC/Tools/MSVC/14.44.35207/lib/x64"

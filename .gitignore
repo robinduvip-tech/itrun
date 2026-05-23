@@ -1,0 +1,38 @@
+# Rust / Tauri
+src-tauri/target/
+src-tauri/icons/android/
+src-tauri/icons/ios/
+
+# Node / Vite
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+*.exe
+*.msi
+*.dmg
+*.deb
+*.AppImage
+
+# Database (contains API keys)
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+*.log
