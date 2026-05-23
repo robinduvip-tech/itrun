@@ -41,6 +41,9 @@ pub async fn get_settings(
     if !settings.contains_key("theme") {
         settings.insert("theme".to_string(), "light".to_string());
     }
+    if !settings.contains_key("auto_start") {
+        settings.insert("auto_start".to_string(), "true".to_string());
+    }
 
     Ok(settings)
 }
