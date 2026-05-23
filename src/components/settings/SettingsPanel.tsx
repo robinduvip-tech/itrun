@@ -120,7 +120,7 @@ export default function SettingsPanel() {
               className="input-field w-32 text-sm"
             />
             <p className="mt-1 text-xs text-surface-500">
-              默认端口 3000，修改后需重启代理
+              默认端口 9876，修改后需重启代理
             </p>
           </div>
 
@@ -203,7 +203,7 @@ export default function SettingsPanel() {
               数据库路径
             </p>
             <p className="mt-1 font-mono text-xs text-surface-400">
-              {settings.db_path || "~/.codexbridge/data.db"}
+              {settings.db_path || "~/.itrun/data.db"}
             </p>
           </div>
         </div>
@@ -214,7 +214,7 @@ export default function SettingsPanel() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs text-surface-400">应用名称</span>
-            <span className="text-xs font-medium text-surface-200">CodexBridge</span>
+            <span className="text-xs font-medium text-surface-200">iTrun</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-surface-400">版本</span>

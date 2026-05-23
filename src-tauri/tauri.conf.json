@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/tauri-apps/main/tauri-conf-schema.json",
-  "productName": "CodexBridge",
+  "productName": "iTrun",
   "version": "0.1.0",
-  "identifier": "com.codexbridge.app",
+  "identifier": "com.itrun.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "CodexBridge",
+        "title": "iTrun",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

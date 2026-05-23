@@ -6,7 +6,7 @@ fn main() {
         )
         .init();
 
-    tracing::info!("Starting CodexBridge...");
+    tracing::info!("Starting iTrun...");
 
-    codexbridge_lib::run();
+    itrun_lib::run();
 }

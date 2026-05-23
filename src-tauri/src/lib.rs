@@ -13,14 +13,14 @@ use provider::registry::ProviderRegistry;
 static DB_PATH: once_cell::sync::OnceCell<String> = once_cell::sync::OnceCell::new();
 
 pub fn get_db_path() -> &'static str {
-    DB_PATH.get().map(|s| s.as_str()).unwrap_or("codexbridge.db")
+    DB_PATH.get().map(|s| s.as_str()).unwrap_or("itrun.db")
 }
 
 pub fn run() {
     let app_dir = get_app_data_dir();
     std::fs::create_dir_all(&app_dir).ok();
 
-    let db_path = format!("{}/codexbridge.db", app_dir);
+    let db_path = format!("{}/itrun.db", app_dir);
     DB_PATH.set(db_path.clone()).ok();
 
     tracing::info!("Database path: {}", db_path);
@@ -73,7 +73,7 @@ pub fn run() {
             commands::settings::reset_settings,
         ])
         .setup(|_app| {
-            tracing::info!("CodexBridge app setup complete");
+            tracing::info!("iTrun app setup complete");
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -82,7 +82,7 @@ pub fn run() {
 
 fn get_app_data_dir() -> String {
     if let Ok(dir) = std::env::var("APPDATA") {
-        format!("{}/CodexBridge", dir)
+        format!("{}/iTrun", dir)
     } else if let Ok(dir) = std::env::var("HOME") {
         format!("{}/.codexbridge", dir)
     } else {

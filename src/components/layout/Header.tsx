@@ -27,7 +27,7 @@ export default function Header() {
     for (const [path, name] of Object.entries(pageTitles)) {
       if (path !== "/" && location.pathname.startsWith(path)) return name;
     }
-    return "CodexBridge";
+    return "iTrun";
   }, [location.pathname]);
 
   const handleToggleProxy = async () => {

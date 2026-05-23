@@ -1,15 +1,15 @@
 [package]
-name = "codexbridge"
+name = "itrun"
 version = "0.1.0"
 description = "AI Code Completion Relay Client"
-authors = ["CodexBridge"]
+authors = ["iTrun"]
 edition = "2021"
 
 [package.metadata]
 # Tauri 2.x package metadata
 
 [lib]
-name = "codexbridge_lib"
+name = "itrun_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

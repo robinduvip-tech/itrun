@@ -29,7 +29,7 @@ export default function Sidebar() {
           <Link2 className="h-4 w-4 text-bridge-400" />
         </div>
         <span className="text-lg font-semibold tracking-tight text-white">
-          CodexBridge
+          iTrun
         </span>
       </div>
 
