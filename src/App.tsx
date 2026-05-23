@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Providers from "@/pages/Providers";
 import History from "@/pages/History";
+import RelayConfig from "@/pages/RelayConfig";
 import Settings from "@/pages/Settings";
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/providers" element={<Providers />} />
+        <Route path="/relay" element={<RelayConfig />} />
         <Route path="/history" element={<History />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

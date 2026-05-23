@@ -2,6 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Server,
+  ArrowRightLeft,
   History,
   Settings,
   Link2,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "控制台" },
   { to: "/providers", icon: Server, label: "供应商" },
+  { to: "/relay", icon: ArrowRightLeft, label: "中转配置" },
   { to: "/history", icon: History, label: "历史" },
   { to: "/settings", icon: Settings, label: "设置" },
 ];

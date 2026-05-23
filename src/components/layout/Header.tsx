@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const pageTitles: Record<string, string> = {
   "/": "控制台",
   "/providers": "供应商管理",
+  "/relay": "中转配置",
   "/history": "请求历史",
   "/settings": "设置",
 };
