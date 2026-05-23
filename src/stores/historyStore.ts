@@ -98,8 +98,6 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         model: filters.model || undefined,
         status: filters.status,
         search: filters.search || undefined,
-        sort_by: "timestamp",
-        sort_order: "desc",
       };
       const result = await getHistory(query);
       set({

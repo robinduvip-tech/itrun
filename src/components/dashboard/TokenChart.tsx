@@ -20,9 +20,8 @@ interface TokenChartProps {
 export default function TokenChart({ data, isLoading }: TokenChartProps) {
   const chartData = useMemo(() => {
     return data.map((d) => ({
-      date: d.date.slice(5), // MM-DD
-      prompt_tokens: d.prompt_tokens,
-      completion_tokens: d.completion_tokens,
+      date: d.date.slice(5),
+      tokens: d.token_count,
     }));
   }, [data]);
 
@@ -105,42 +104,26 @@ export default function TokenChart({ data, isLoading }: TokenChartProps) {
               color: "#fff",
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}
-            formatter={(value: number, name: string) => [
+            formatter={(value: number, _name: string) => [
               formatTokens(value),
-              name === "prompt_tokens" ? "提示 Token" : "补全 Token",
+              "Token 用量",
             ]}
             labelStyle={{ color: "rgba(255,255,255,0.5)" }}
           />
           <Legend
             wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }}
-            formatter={(value: string) =>
-              value === "prompt_tokens" ? "提示 Token" : "补全 Token"
-            }
+            formatter={(_value: string) => "Token 用量"}
           />
           <Line
             type="monotone"
-            dataKey="prompt_tokens"
-            name="prompt_tokens"
+            dataKey="tokens"
+            name="tokens"
             stroke="#818cf8"
             strokeWidth={2}
             dot={false}
             activeDot={{
               r: 4,
               fill: "#818cf8",
-              stroke: "#fff",
-              strokeWidth: 2,
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="completion_tokens"
-            name="completion_tokens"
-            stroke="#34d399"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{
-              r: 4,
-              fill: "#34d399",
               stroke: "#fff",
               strokeWidth: 2,
             }}

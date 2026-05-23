@@ -128,11 +128,11 @@ export const useProviderStore = create<ProviderState>((set, get) => ({
     set({ testingId: id });
     try {
       const success = await testProviderConnection(id);
-      // Update provider's connection status locally
+      // Update provider's enabled status and update API key presence locally
       const { providers } = get();
       set({
         providers: providers.map((p) =>
-          p.id === id ? { ...p, is_connected: success } : p
+          p.id === id ? { ...p, enabled: success } : p
         ),
         testingId: null,
       });

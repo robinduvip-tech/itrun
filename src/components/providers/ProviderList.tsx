@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Server, Plus, Settings, Trash2, Zap } from "lucide-react";
+import { Server, Plus, Settings, Trash2, Zap, Key } from "lucide-react";
 import { useProviderStore } from "@/stores/providerStore";
 import { cn } from "@/lib/utils";
 import type { Provider } from "@/lib/tauri";
@@ -146,7 +146,7 @@ export default function ProviderList({
       {/* Grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {providers.map((provider) => {
-          const isConnected = provider.is_connected;
+          const hasKey = provider.api_key && provider.api_key.length > 0;
           const isDefault = provider.id === defaultProviderId;
           const typeColor =
             typeColors[provider.provider_type] || typeColors.custom;
@@ -171,7 +171,7 @@ export default function ProviderList({
                     <span
                       className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        isConnected ? "bg-emerald-500" : "bg-surface-600"
+                        hasKey ? "bg-emerald-500" : "bg-surface-600"
                       )}
                     />
                   </div>
@@ -231,10 +231,10 @@ export default function ProviderList({
                 <span
                   className={cn(
                     "text-xs",
-                    isConnected ? "text-emerald-400" : "text-surface-500"
+                    hasKey ? "text-emerald-400" : "text-surface-500"
                   )}
                 >
-                  {isConnected ? "已配置" : "未配置密钥"}
+                  {hasKey ? "已配置" : "未配置密钥"}
                 </span>
               </div>
             </div>

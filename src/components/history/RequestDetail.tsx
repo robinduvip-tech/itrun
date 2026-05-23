@@ -28,11 +28,11 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
     }
   };
 
-  const requestBody = request.request_body
-    ? formatJSON(request.request_body)
+  const requestBody = request.request_body_preview
+    ? formatJSON(request.request_body_preview)
     : "无请求内容";
-  const responseBody = request.response_body
-    ? formatJSON(request.response_body)
+  const responseBody = request.response_body_preview
+    ? formatJSON(request.response_body_preview)
     : "无响应内容";
 
   return (
@@ -58,8 +58,8 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
 
         {/* Metadata */}
         <div className="grid grid-cols-2 gap-3 border-b border-surface-800/60 px-6 py-4">
-          <MetaItem label="时间" value={new Date(request.timestamp).toLocaleString("zh-CN")} />
-          <MetaItem label="供应商" value={request.provider} />
+          <MetaItem label="时间" value={new Date(request.created_at).toLocaleString("zh-CN")} />
+          <MetaItem label="供应商" value={request.provider_id} />
           <MetaItem label="模型" value={request.model} mono />
           <MetaItem
             label="状态"
@@ -67,10 +67,7 @@ export default function RequestDetail({ request, onClose }: RequestDetailProps) 
               <StatusBadge status={request.status} />
             }
           />
-          <MetaItem
-            label="Token"
-            value={`${formatTokens(request.prompt_tokens)} 提示 + ${formatTokens(request.completion_tokens)} 补全`}
-          />
+          <MetaItem label="Token" value={`${formatTokens(request.tokens_used)}`} />
           <MetaItem label="延迟" value={formatLatency(request.latency_ms)} />
         </div>
 
@@ -169,7 +166,7 @@ function MetaItem({
   );
 }
 
-function StatusBadge({ status }: { status: "success" | "error" }) {
+function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(

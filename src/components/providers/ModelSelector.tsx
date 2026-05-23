@@ -41,7 +41,7 @@ export default function ModelSelector({ value, onChange }: ModelSelectorProps) {
   // Group models by provider, filter by search
   const groupedModels = useMemo(() => {
     return providers
-      .filter((p) => p.is_connected)
+      .filter((p) => p.api_key && p.api_key.length > 0)
       .map((provider) => ({
         providerId: provider.id,
         providerName: provider.name,

@@ -17,15 +17,15 @@ interface HistoryTableProps {
   onSelect: (entry: HistoryEntry) => void;
 }
 
-type SortField = "timestamp" | "provider" | "model" | "total_tokens" | "latency_ms" | "status";
+type SortField = "created_at" | "provider_id" | "model" | "tokens_used" | "latency_ms" | "status";
 type SortDirection = "asc" | "desc";
 
 const columns: { key: SortField; label: string; align: "left" | "right" | "center" }[] = [
-  { key: "timestamp", label: "时间", align: "left" },
-  { key: "provider", label: "供应商", align: "left" },
+  { key: "created_at", label: "时间", align: "left" },
+  { key: "provider_id", label: "供应商", align: "left" },
   { key: "model", label: "模型", align: "left" },
   { key: "latency_ms", label: "延迟", align: "right" },
-  { key: "total_tokens", label: "Token", align: "right" },
+  { key: "tokens_used", label: "Token", align: "right" },
   { key: "status", label: "状态", align: "center" },
 ];
 
@@ -41,7 +41,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
   const setFilter = useHistoryStore((s) => s.setFilter);
   const clearFilters = useHistoryStore((s) => s.clearFilters);
 
-  const [sortField, setSortField] = useState<SortField>("timestamp");
+  const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
@@ -259,10 +259,10 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                     className="group cursor-pointer border-b border-surface-800/30 transition-colors hover:bg-surface-800/40"
                   >
                     <td className="whitespace-nowrap px-5 py-3.5 text-xs text-surface-400">
-                      {formatRelativeTime(entry.timestamp)}
+                      {formatRelativeTime(entry.created_at)}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-xs text-surface-300">
-                      {entry.provider}
+                      {entry.provider_id}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 font-mono text-xs text-surface-400">
                       {entry.model}
@@ -271,7 +271,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
                       {formatLatency(entry.latency_ms)}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-right text-xs tabular-nums text-surface-300">
-                      {formatTokens(entry.total_tokens)}
+                      {formatTokens(entry.tokens_used)}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-center text-xs">
                       <StatusBadge status={entry.status} />
@@ -313,7 +313,7 @@ export default function HistoryTable({ onSelect }: HistoryTableProps) {
   );
 }
 
-function StatusBadge({ status }: { status: "success" | "error" }) {
+function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(

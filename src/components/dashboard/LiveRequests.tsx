@@ -103,16 +103,16 @@ export default function LiveRequests() {
                   className="border-b border-surface-800/30 transition-colors hover:bg-surface-800/30"
                 >
                   <td className="whitespace-nowrap px-6 py-3 text-xs text-surface-400">
-                    {formatRelativeTime(entry.timestamp)}
+                    {formatRelativeTime(entry.created_at)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-3 text-xs text-surface-300">
-                    {entry.provider}
+                    {entry.provider_id}
                   </td>
                   <td className="whitespace-nowrap px-6 py-3 font-mono text-xs text-surface-400">
                     {truncate(entry.model, 24)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-surface-300">
-                    {formatTokens(entry.total_tokens)}
+                    {formatTokens(entry.tokens_used)}
                   </td>
                   <td className="whitespace-nowrap px-6 py-3 text-right text-xs tabular-nums text-surface-300">
                     {formatLatency(entry.latency_ms)}
@@ -130,7 +130,7 @@ export default function LiveRequests() {
   );
 }
 
-function StatusBadge({ status }: { status: "success" | "error" }) {
+function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(
