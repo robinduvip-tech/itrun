@@ -3,6 +3,7 @@ pub mod provider;
 pub mod db;
 pub mod commands;
 pub mod middleware;
+pub mod configs;
 
 use std::sync::Arc;
 use parking_lot::Mutex;
@@ -74,6 +75,9 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::set_setting,
             commands::settings::reset_settings,
+            commands::configs::scan_configs,
+            commands::configs::read_config_file,
+            commands::configs::write_config_file,
         ])
         .setup(|_app| {
             tracing::info!("iTrun app setup complete");

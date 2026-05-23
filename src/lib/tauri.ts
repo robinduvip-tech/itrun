@@ -180,6 +180,35 @@ export async function listAllModels(): Promise<ModelInfo[]> {
   return invoke<ModelInfo[]>("list_all_models_cmd");
 }
 
+// ── Config Scanner ─────────────────────────────────────────────
+
+export interface ConfigFile {
+  name: string;
+  category: string;
+  path: string;
+  exists: boolean;
+  content?: string;
+  keys?: ConfigKey[];
+}
+
+export interface ConfigKey {
+  key: string;
+  value: string;
+  description: string;
+}
+
+export async function scanConfigs(): Promise<ConfigFile[]> {
+  return invoke<ConfigFile[]>("scan_configs");
+}
+
+export async function readConfigFile(path: string): Promise<ConfigFile> {
+  return invoke<ConfigFile>("read_config_file", { path });
+}
+
+export async function writeConfigFile(path: string, content: string): Promise<void> {
+  return invoke<void>("write_config_file", { path, content });
+}
+
 export async function getHistory(
   params: HistoryQuery
 ): Promise<{ entries: HistoryEntry[]; total: number }> {

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play } from "lucide-react";
+import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play, FolderOpen, FileText, RefreshCw, Search, Edit3 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { setSetting, getSettings } from "@/lib/tauri";
+import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile } from "@/lib/tauri";
+import type { ConfigFile, ConfigKey } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 // ── Default configurations ──────────────────────────────────────
@@ -304,6 +305,9 @@ export default function RelayConfig() {
           )}
         </div>
       </ConfigCard>
+
+      {/* ── Local Config Scanner ── */}
+      <ConfigScanner />
     </div>
   );
 }
@@ -395,5 +399,212 @@ function KeyIcon() {
     <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
     </svg>
+  );
+}
+
+// ── Local Config Scanner ──────────────────────────────────────
+
+function ConfigScanner() {
+  const [configs, setConfigs] = useState<ConfigFile[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [viewingFile, setViewingFile] = useState<ConfigFile | null>(null);
+  const [editingFile, setEditingFile] = useState<ConfigFile | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [savingFile, setSavingFile] = useState(false);
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const result = await scanConfigs();
+      setConfigs(result);
+    } catch { /* ignore */ }
+    setScanning(false);
+  };
+
+  const handleView = async (cfg: ConfigFile) => {
+    try {
+      const detail = await readConfigFile(cfg.path);
+      setViewingFile(detail);
+      setEditingFile(null);
+    } catch (err) {
+      setMsg({ type: "err", text: `读取失败: ${err}` });
+    }
+  };
+
+  const handleEdit = async (cfg: ConfigFile) => {
+    try {
+      const detail = await readConfigFile(cfg.path);
+      setEditingFile(detail);
+      setEditContent(detail.content || "");
+      setViewingFile(null);
+    } catch (err) {
+      setMsg({ type: "err", text: `读取失败: ${err}` });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingFile) return;
+    setSavingFile(true);
+    try {
+      await writeConfigFile(editingFile.path, editContent);
+      setMsg({ type: "ok", text: "已保存" });
+      setEditingFile(null);
+      // Refresh scan
+      handleScan();
+    } catch (err) {
+      setMsg({ type: "err", text: `保存失败: ${err}` });
+    }
+    setSavingFile(false);
+  };
+
+  const categoryLabel: Record<string, string> = {
+    claude: "Claude Code",
+    claude_desktop: "Claude Desktop",
+    codex: "Codex CLI",
+    vscode: "VS Code",
+    cursor: "Cursor",
+    gemini: "Gemini CLI",
+  };
+
+  const categoryColor: Record<string, string> = {
+    claude: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+    claude_desktop: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+    codex: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400",
+    vscode: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+    cursor: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
+    gemini: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/60 backdrop-blur-xl border-l-4 border-l-emerald-500 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-surface-800/60">
+        <div className="flex items-center gap-3">
+          <FolderOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">本地配置扫描</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">检测并管理 Claude Code / Codex / Cursor 等本地配置文件</p>
+          </div>
+        </div>
+        <button onClick={handleScan} disabled={scanning}
+          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50">
+          {scanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+          {scanning ? "扫描中..." : "扫描配置"}
+        </button>
+      </div>
+
+      {/* Message */}
+      {msg && (
+        <div className={cn("mx-6 mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs",
+          msg.type === "ok" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+            : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400")}>
+          {msg.type === "ok" ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-auto text-xs underline">关闭</button>
+        </div>
+      )}
+
+      {/* Config list */}
+      <div className="px-6 py-4">
+        {configs.length === 0 && !scanning ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Search className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">点击「扫描配置」检测本地配置文件</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">支持 Claude Code、Codex CLI、Cursor、VS Code 等</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {configs.map((cfg) => (
+              <div key={cfg.path}
+                className={cn("flex items-center justify-between rounded-lg px-3 py-2 transition-colors",
+                  cfg.exists ? "hover:bg-gray-50 dark:hover:bg-surface-800/50" : "opacity-50")}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                    cfg.exists ? "bg-gray-100 dark:bg-surface-700" : "bg-gray-50 dark:bg-surface-800"
+                  )}>
+                    <FileText className={cn("h-3.5 w-3.5", cfg.exists ? "text-gray-500" : "text-gray-300 dark:text-gray-600")} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-gray-900 dark:text-white truncate">{cfg.name}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate">{cfg.path}</p>
+                  </div>
+                  <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0", categoryColor[cfg.category] || "bg-gray-100 text-gray-600")}>
+                    {categoryLabel[cfg.category] || cfg.category}
+                  </span>
+                  {cfg.exists && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="文件存在" />}
+                  {!cfg.exists && <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" title="文件不存在" />}
+                </div>
+                {cfg.exists && (
+                  <div className="flex items-center gap-1 ml-2 shrink-0">
+                    <button onClick={() => handleView(cfg)}
+                      className="rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-surface-700 transition-colors">
+                      <Eye className="h-3.5 w-3.5 inline mr-1" />查看
+                    </button>
+                    <button onClick={() => handleEdit(cfg)}
+                      className="rounded-md px-2 py-1 text-xs text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
+                      <Edit3 className="h-3.5 w-3.5 inline mr-1" />编辑
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* File Viewer Modal */}
+      {viewingFile && (
+        <FileModal title={`查看: ${viewingFile.name}`} onClose={() => setViewingFile(null)}>
+          {viewingFile.keys && viewingFile.keys.length > 0 && (
+            <div className="mb-4 space-y-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">配置项</p>
+              {viewingFile.keys.map((k) => (
+                <div key={k.key} className="flex items-center justify-between rounded-md bg-gray-50 dark:bg-surface-800/50 px-3 py-1.5">
+                  <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{k.key}</span>
+                  <span className="text-xs font-mono text-gray-500">{k.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <pre className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-surface-800/50 rounded-lg p-4 max-h-64 overflow-auto whitespace-pre-wrap">
+            {viewingFile.content || "(空文件)"}
+          </pre>
+        </FileModal>
+      )}
+
+      {/* File Editor Modal */}
+      {editingFile && (
+        <FileModal title={`编辑: ${editingFile.name}`} onClose={() => setEditingFile(null)}>
+          <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)}
+            className="input-field font-mono text-xs h-80 resize-none" />
+          <div className="mt-4 flex justify-end gap-2">
+            <button onClick={() => setEditingFile(null)} className="btn-secondary text-sm">取消</button>
+            <button onClick={handleSaveEdit} disabled={savingFile}
+              className="btn-primary text-sm flex items-center gap-1.5">
+              <Save className="h-3.5 w-3.5" />{savingFile ? "保存中..." : "保存"}
+            </button>
+          </div>
+        </FileModal>
+      )}
+    </div>
+  );
+}
+
+function FileModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[85vh] animate-slide-up rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/95 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-surface-800/60">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-700">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div className="px-6 py-4 overflow-y-auto">{children}</div>
+      </div>
+    </div>
   );
 }
