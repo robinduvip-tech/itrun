@@ -63,6 +63,8 @@ pub fn run() {
             commands::provider::list_providers_cmd,
             commands::provider::test_provider_connection,
             commands::provider::set_default_provider_cmd,
+            commands::provider::fetch_provider_models,
+            commands::provider::list_all_models_cmd,
             commands::history::get_history,
             commands::history::get_request_detail,
             commands::history::clear_history_cmd,

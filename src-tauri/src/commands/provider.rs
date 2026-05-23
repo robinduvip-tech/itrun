@@ -7,7 +7,7 @@ use tauri::{command, State};
 
 use crate::db::config::{self, ProviderConfig};
 use crate::provider::registry::ProviderRegistry;
-use crate::provider;
+use crate::provider::{self, ModelInfo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddProviderArgs {
@@ -142,4 +142,28 @@ pub async fn set_default_provider_cmd(
     config::set_default_provider(&conn, &id)?;
     ProviderRegistry::set_default(&id);
     Ok(())
+}
+
+#[command]
+pub async fn fetch_provider_models(
+    id: String,
+) -> Result<Vec<ModelInfo>, String> {
+    match ProviderRegistry::get(&id) {
+        Some(provider) => {
+            let models = provider.list_models().await?;
+            ProviderRegistry::cache_models(&id, models.clone());
+            Ok(models)
+        }
+        None => Err(format!("Provider not found: {}", id)),
+    }
+}
+
+#[command]
+pub async fn list_all_models_cmd() -> Result<Vec<ModelInfo>, String> {
+    let all = ProviderRegistry::list_all();
+    let mut models: Vec<ModelInfo> = Vec::new();
+    for (_, provider_models) in all {
+        models.extend(provider_models);
+    }
+    Ok(models)
 }

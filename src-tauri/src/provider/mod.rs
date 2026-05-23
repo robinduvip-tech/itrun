@@ -1,10 +1,12 @@
 mod r#trait;
 mod openai;
+mod anthropic;
 pub mod registry;
 
 pub use r#trait::{Provider, ModelInfo};
 pub use registry::ProviderRegistry;
 pub use openai::OpenAiProvider;
+pub use anthropic::AnthropicProvider;
 
 use std::sync::Arc;
 use serde_json::Value;
@@ -20,27 +22,66 @@ pub fn build_provider(
     match provider_type {
         "openai" | "open_ai" => {
             let base = if base_url.is_empty() {
-                "https://api.openai.com/v1".to_string()
-            } else {
-                base_url.to_string()
-            };
-            let provider = OpenAiProvider::new(api_key, &base);
-            Ok(Some(Arc::new(provider)))
+                "https://api.openai.com/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
         }
-        "azure" | "azure_openai" => {
-            // Azure OpenAI uses the same API shape but different auth
-            let provider = OpenAiProvider::new(api_key, base_url);
-            Ok(Some(Arc::new(provider)))
+        "anthropic" | "claude" | "opus" => {
+            let base = if base_url.is_empty() {
+                "https://api.anthropic.com/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(AnthropicProvider::new(api_key, base))))
         }
-        "custom" => {
-            // Custom OpenAI-compatible provider
-            let provider = OpenAiProvider::new(api_key, base_url);
-            Ok(Some(Arc::new(provider)))
+        "kimi" | "moonshot" => {
+            let base = if base_url.is_empty() {
+                "https://api.moonshot.cn/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
         }
-        _ => {
-            // Try as OpenAI-compatible
-            let provider = OpenAiProvider::new(api_key, base_url);
-            Ok(Some(Arc::new(provider)))
+        "qwen" | "tongyi" => {
+            let base = if base_url.is_empty() {
+                "https://dashscope.aliyuncs.com/compatible-mode/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "deepseek" => {
+            let base = if base_url.is_empty() {
+                "https://api.deepseek.com/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "gemini" | "google" => {
+            let base = if base_url.is_empty() {
+                "https://generativelanguage.googleapis.com/v1beta"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "nvidia" | "nim" => {
+            let base = if base_url.is_empty() {
+                "https://integrate.api.nvidia.com/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "groq" => {
+            let base = if base_url.is_empty() {
+                "https://api.groq.com/openai/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "siliconflow" | "silicon" => {
+            let base = if base_url.is_empty() {
+                "https://api.siliconflow.cn/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "xai" | "grok" => {
+            let base = if base_url.is_empty() {
+                "https://api.x.ai/v1"
+            } else { base_url };
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base))))
+        }
+        "azure" | "azure_openai" | "custom" | _ => {
+            Ok(Some(Arc::new(OpenAiProvider::new(api_key, base_url))))
         }
     }
 }

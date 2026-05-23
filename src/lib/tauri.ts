@@ -158,6 +158,14 @@ export async function setDefaultProvider(id: string): Promise<void> {
   return invoke<void>("set_default_provider_cmd", { id });
 }
 
+export async function fetchProviderModels(id: string): Promise<ModelInfo[]> {
+  return invoke<ModelInfo[]>("fetch_provider_models", { id });
+}
+
+export async function listAllModels(): Promise<ModelInfo[]> {
+  return invoke<ModelInfo[]>("list_all_models_cmd");
+}
+
 export async function getHistory(
   params: HistoryQuery
 ): Promise<{ entries: HistoryEntry[]; total: number }> {
