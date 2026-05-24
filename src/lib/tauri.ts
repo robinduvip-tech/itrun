@@ -346,9 +346,9 @@ export async function restoreCodexOfficial(): Promise<CodexStatus> {
 }
 
 export async function updateCodexProfile(
-  id: string, name: string, apiKey: string, baseUrl: string, model: string
+  id: string, name: string, apiKey: string, baseUrl: string, model: string, customName: string
 ): Promise<CodexStatus> {
-  return invoke<CodexStatus>("update_codex_profile", { id, name, apiKey, baseUrl, model });
+  return invoke<CodexStatus>("update_codex_profile", { id, name, apiKey, baseUrl, model, customName });
 }
 
 export async function testCodexProfile(id: string): Promise<string> {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw, Edit3, Wifi, Download } from "lucide-react";
+import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw, Edit3, Wifi, Download, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, updateCodexProfile, testCodexProfile, tryFetchModels, writeCodexFiles, setSetting } from "@/lib/tauri";
 import type { CodexProfile, CodexStatus } from "@/lib/tauri";
@@ -51,6 +51,7 @@ function CodexTab() {
   const [editKey, setEditKey] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [editModel, setEditModel] = useState("");
+  const [editCustomName, setEditCustomName] = useState("");
   const [editingOfficial, setEditingOfficial] = useState(false);
   const [officialAuth, setOfficialAuth] = useState("");
   const [officialConfig, setOfficialConfig] = useState("");
@@ -73,9 +74,13 @@ function CodexTab() {
   };
 
   const handleDelete = async (id: string) => { try { await deleteCodexProfile(id); await refresh(); } catch {} };
-  const startEdit = (p: CodexProfile) => { setEditingId(p.id); setEditName(p.name); setEditKey(p.api_key); setEditUrl(p.base_url); setEditModel(p.model); };
+  const startEdit = (p: CodexProfile) => { setEditingId(p.id); setEditName(p.name); setEditKey(p.api_key); setEditUrl(p.base_url); setEditModel(p.model); setEditCustomName(p.custom_name || ""); };
   const cancelEdit = () => setEditingId(null);
-  const handleEdit = async () => { /* ... existing code ... */ };
+  const handleEdit = async () => {
+    if (!editingId || !editName.trim()) return;
+    try { await updateCodexProfile(editingId, editName.trim(), editKey.trim(), editUrl.trim(), editModel.trim(), editCustomName.trim()); setEditingId(null); await refresh(); showMsg("ok", "ok"); }
+    catch (e: any) { showMsg("err", e.toString()); }
+  };
   const handleTest = async (id: string) => {
     setTesting(id);
     try { const r = await testCodexProfile(id); setTestResults(prev => ({ ...prev, [id]: r })); } catch (e: any) { setTestResults(prev => ({ ...prev, [id]: e.toString() })); }
@@ -156,7 +161,8 @@ function CodexTab() {
                     <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={editName} onChange={e => setEditName(e.target.value)} className="input-field text-sm" /></div>
                     <div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2">{/* model + fetch */}<input value={editModel} onChange={e => setEditModel(e.target.value)} className="input-field text-sm flex-1" /><button type="button" onClick={async () => { if (!editKey.trim()) return; try { const models = await tryFetchModels("openai", editKey.trim(), editUrl.trim()); if (models.length > 0) setEditModel(models[0].id); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } }} className="btn-secondary text-xs flex items-center gap-1 shrink-0"><Download className="h-3 w-3" />获取</button></div></div>
                     <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={editKey} onChange={e => setEditKey(e.target.value)} className="input-field text-sm" /></div>
-                    <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={editUrl} onChange={e => setEditUrl(e.target.value)} className="input-field text-sm" /></div>
+                    <div><label className="text-xs text-gray-500 mb-1 block">[model_providers.custom].name</label><input value={editCustomName} onChange={e => setEditCustomName(e.target.value)} placeholder={editModel.split("/").pop() || "custom-model"} className="input-field text-sm font-mono" /></div>
+                    <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={editUrl} onChange={e => setEditUrl(e.target.value)} className="input-field text-sm" /></div>
                   </div>
                   <div className="flex justify-end gap-2"><button onClick={cancelEdit} className="btn-secondary text-sm">取消</button><button onClick={handleEdit} className="btn-primary text-sm">保存</button></div>
                 </div>
@@ -175,7 +181,10 @@ function CodexTab() {
                     {switchingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : status.active_id === p.id ? "已激活" : "切换"}
                   </button>
                   <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => startEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { startEdit(p); }} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => { setEditingOfficial(true); setOfficialAuth(status?.current_auth || ""); setOfficialConfig(status?.current_config || ""); }}
+                    className="p-1.5 text-gray-400 hover:text-amber-500 rounded-lg hover:bg-amber-50 transition-colors" title="快捷编辑 config.toml">
+                    <FileText className="h-3.5 w-3.5" /></button>
                   <button onClick={() => handleTest(p.id)} disabled={testing === p.id} className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-emerald-50 transition-colors" title="测试延迟">
                     {testing === p.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
                   </button>
