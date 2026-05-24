@@ -178,3 +178,57 @@ pub async fn list_all_models_cmd() -> Result<Vec<ModelInfo>, String> {
     }
     Ok(models)
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderHealth {
+    pub id: String,
+    pub healthy: bool,
+    pub latency_ms: i64,
+    pub rate_test_ms: i64,
+    pub last_checked: String,
+}
+
+#[command]
+pub async fn test_provider_health(id: String) -> Result<ProviderHealth, String> {
+    match ProviderRegistry::get(&id) {
+        Some(provider) => {
+            let start = std::time::Instant::now();
+            let valid = provider.validate_api_key().await.unwrap_or(false);
+            let latency_ms = start.elapsed().as_millis() as i64;
+
+            Ok(ProviderHealth {
+                id,
+                healthy: valid,
+                latency_ms,
+                rate_test_ms: 0,
+                last_checked: chrono::Utc::now().to_rfc3339(),
+            })
+        }
+        None => Err(format!("Provider not found: {}", id)),
+    }
+}
+
+#[command]
+pub async fn check_all_providers_health() -> Result<Vec<ProviderHealth>, String> {
+    let registry = ProviderRegistry::global();
+    let providers: Vec<String> = {
+        registry.providers.read().keys().cloned().collect()
+    };
+
+    let mut results = Vec::new();
+    for id in providers {
+        if let Some(provider) = ProviderRegistry::get(&id) {
+            let start = std::time::Instant::now();
+            let healthy = provider.validate_api_key().await.unwrap_or(false);
+            let latency_ms = start.elapsed().as_millis() as i64;
+            results.push(ProviderHealth {
+                id: id.clone(),
+                healthy,
+                latency_ms,
+                rate_test_ms: 0,
+                last_checked: chrono::Utc::now().to_rfc3339(),
+            });
+        }
+    }
+    Ok(results)
+}

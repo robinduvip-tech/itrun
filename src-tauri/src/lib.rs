@@ -39,12 +39,25 @@ pub fn run() {
     {
         let conn = db_conn.lock();
         if let Ok(providers) = db::config::list_providers(&conn) {
-            for p in providers {
+            for p in &providers {
                 if let Ok(Some(provider)) =
                     provider::build_provider(&p.provider_type, &p.api_key, &p.base_url, &p.config)
                 {
                     let arc_provider: Arc<dyn provider::Provider> = provider;
                     ProviderRegistry::register(&p.id, arc_provider);
+                    // Cache models from DB config
+                    if !p.models.is_empty() {
+                        let model_infos: Vec<provider::ModelInfo> = p.models.iter().map(|m| {
+                            provider::ModelInfo {
+                                id: m.clone(),
+                                name: m.clone(),
+                                provider_name: p.name.clone(),
+                                max_tokens: 16384,
+                                pricing: serde_json::json!({}),
+                            }
+                        }).collect();
+                        ProviderRegistry::cache_models(&p.id, model_infos);
+                    }
                 }
             }
             if let Ok(Some(default_id)) = db::config::get_default_provider(&conn) {
@@ -79,6 +92,8 @@ pub fn run() {
             commands::provider::try_fetch_models,
             commands::provider::fetch_provider_models,
             commands::provider::list_all_models_cmd,
+            commands::provider::test_provider_health,
+            commands::provider::check_all_providers_health,
             commands::history::get_history,
             commands::history::get_request_detail,
             commands::history::clear_history_cmd,

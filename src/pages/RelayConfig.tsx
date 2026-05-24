@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // ── Default configurations ──────────────────────────────────────
 
 const CODECX_DEFAULTS: Record<string, string> = {
-  codex_model: "gpt-4o",
+  codex_model: "gpt-5",
   codex_max_tokens: "4096",
   codex_temperature: "0.7",
   codex_streaming: "true",
@@ -16,7 +16,7 @@ const CODECX_DEFAULTS: Record<string, string> = {
 };
 
 const CLAUDE_DEFAULTS: Record<string, string> = {
-  claude_model: "claude-sonnet-4-20250514",
+  claude_model: "claude-opus-4-7-20250514",
   claude_max_tokens: "8192",
   claude_thinking_budget: "16000",
   claude_base_url: "https://api.anthropic.com/v1",

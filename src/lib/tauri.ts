@@ -259,3 +259,19 @@ export async function setSetting(
 ): Promise<void> {
   return invoke<void>("set_setting", { key, value });
 }
+
+export interface ProviderHealth {
+  id: string;
+  healthy: boolean;
+  latency_ms: number;
+  rate_test_ms: number;
+  last_checked: string;
+}
+
+export async function testProviderHealth(id: string): Promise<ProviderHealth> {
+  return invoke<ProviderHealth>("test_provider_health", { id });
+}
+
+export async function checkAllProvidersHealth(): Promise<ProviderHealth[]> {
+  return invoke<ProviderHealth[]>("check_all_providers_health");
+}

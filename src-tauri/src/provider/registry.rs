@@ -8,13 +8,13 @@ use super::r#trait::{ModelInfo, Provider};
 static REGISTRY: OnceCell<ProviderRegistry> = OnceCell::new();
 
 pub struct ProviderRegistry {
-    providers: RwLock<HashMap<String, Arc<dyn Provider>>>,
+    pub providers: RwLock<HashMap<String, Arc<dyn Provider>>>,
     default_provider: RwLock<Option<String>>,
     models_cache: RwLock<HashMap<String, Vec<ModelInfo>>>,
 }
 
 impl ProviderRegistry {
-    fn global() -> &'static ProviderRegistry {
+    pub fn global() -> &'static ProviderRegistry {
         REGISTRY.get_or_init(|| ProviderRegistry {
             providers: RwLock::new(HashMap::new()),
             default_provider: RwLock::new(None),
