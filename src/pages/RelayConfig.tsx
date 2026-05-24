@@ -37,8 +37,9 @@ function CodexTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
-  const [model, setModel] = useState("gpt-5");
+  const [baseUrl, setBaseUrl] = useState("http://localhost:9876/v1");
+  const [model, setModel] = useState("");
+  const { proxyPort } = useSettingsStore();
   const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -147,7 +148,7 @@ function CodexTab() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">自定义配置方案</h3>
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"><Plus className="h-3.5 w-3.5" />新增方案</button>
+          <button onClick={() => { setShowAdd(true); const n = (status?.profiles.length || 0) + 1; setName(`方案${n}`); setBaseUrl(`http://localhost:${proxyPort}/v1`); setModel(""); }} className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"><Plus className="h-3.5 w-3.5" />新增方案</button>
         </div>
         {(!status?.profiles || status.profiles.length === 0) && !showAdd ? (
           <div className="text-center py-10 text-sm text-gray-400 border-2 border-dashed border-gray-200 dark:border-surface-700 rounded-xl">暂无自定义方案，点击右上角新增</div>
@@ -198,7 +199,7 @@ function CodexTab() {
           <div className="rounded-xl border-2 border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={name} onChange={e => setName(e.target.value)} placeholder="公司中转" className="input-field text-sm" /></div>
-<div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2 relative"><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm flex-1" /><button type="button" onClick={handleFetchModel} disabled={fetchingModel} className="btn-secondary text-xs flex items-center gap-1 shrink-0">{fetchingModel ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}获取</button>{showModelList && fetchedModels.length > 0 && <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">{fetchedModels.map(m => <button key={m.id} type="button" onClick={()=>selectFetchedModel(m.id)} className={cn("flex w-full items-center px-3 py-2 text-xs text-left hover:bg-indigo-50 dark:hover:bg-indigo-500/10", model===m.id?"bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300":"text-gray-700 dark:text-gray-300")}><Check className={cn("h-3 w-3 mr-2 shrink-0", model===m.id?"text-indigo-500":"opacity-0")}/><span className="truncate font-mono">{m.id}</span></button>)}</div>}</div></div>
+<div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2 relative"><input value={model} onChange={e => setModel(e.target.value)} placeholder="点击获取" className="input-field text-sm flex-1" /><button type="button" onClick={handleFetchModel} disabled={fetchingModel} className="btn-secondary text-xs flex items-center gap-1 shrink-0">{fetchingModel ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}获取</button>{showModelList && fetchedModels.length > 0 && <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">{fetchedModels.map(m => <button key={m.id} type="button" onClick={()=>selectFetchedModel(m.id)} className={cn("flex w-full items-center px-3 py-2 text-xs text-left hover:bg-indigo-50 dark:hover:bg-indigo-500/10", model===m.id?"bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300":"text-gray-700 dark:text-gray-300")}><Check className={cn("h-3 w-3 mr-2 shrink-0", model===m.id?"text-indigo-500":"opacity-0")}/><span className="truncate font-mono">{m.id}</span></button>)}</div>}</div></div>
               <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." className="input-field text-sm" /></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="input-field text-sm" /></div>
             </div>
