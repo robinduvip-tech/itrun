@@ -13,13 +13,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-surface-950">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-gray-100 dark:border-surface-800/60 px-5">
-        <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-200">iTrun</h1>
-        <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-gray-100 dark:border-surface-800/60 px-5">
+        <span className={cn("flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
           isRunning ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
             : "bg-gray-100 text-gray-500 dark:bg-surface-800 dark:text-gray-400")}>
           <span className={cn("h-1.5 w-1.5 rounded-full", isRunning ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
-          {isRunning ? `:${port}` : "已停止"}
+          {isRunning ? `代理运行中 :${port}` : "代理已停止"}
         </span>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-5">

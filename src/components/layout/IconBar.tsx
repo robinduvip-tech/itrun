@@ -18,10 +18,7 @@ export default function IconBar() {
 
   return (
     <div className="flex h-full w-[68px] shrink-0 select-none flex-col items-center bg-gray-100 dark:bg-[#1a1a1f] py-3 gap-1">
-      <div className="mb-5 mt-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/20">
-        <span className="text-sm font-bold text-white">iT</span>
-      </div>
-      <nav className="flex flex-1 flex-col items-center gap-1.5">
+      <nav className="flex flex-1 flex-col items-center gap-1.5 mt-2">
         {navItems.map((item) => {
           const active = isActive(item.to);
           return (

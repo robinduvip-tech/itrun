@@ -12,7 +12,7 @@ export default function Settings() {
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-surface-950">
-      <div className="flex h-12 shrink-0 items-center border-b border-gray-100 dark:border-surface-800/60 px-5">
+      <div className="flex h-14 shrink-0 items-center border-b border-gray-100 dark:border-surface-800/60 px-5">
         <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-200">设置</h1>
       </div>
       <div className="flex-1 overflow-y-auto p-5 max-w-md space-y-6">

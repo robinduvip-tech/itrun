@@ -44,7 +44,7 @@ export default function Providers() {
   return (
     <div className="flex h-full bg-white dark:bg-surface-950">
       <div className="flex w-[300px] shrink-0 flex-col border-r border-gray-100 dark:border-surface-800/60">
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-gray-100 dark:border-surface-800/60 px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 dark:border-surface-800/60 px-4">
           <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">供应商</h2>
           <button onClick={handleAdd} className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 dark:bg-surface-800 text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
             <Plus className="h-4 w-4" />

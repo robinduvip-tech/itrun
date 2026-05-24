@@ -20,7 +20,7 @@ export default function History() {
   return (
     <div className="flex h-full bg-white dark:bg-surface-950">
       <div className="flex w-[340px] shrink-0 flex-col border-r border-gray-100 dark:border-surface-800/60">
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-gray-100 dark:border-surface-800/60 px-4">
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-100 dark:border-surface-800/60 px-4">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <input type="text" value={filters.search} onChange={(e) => setFilter("search", e.target.value)}
