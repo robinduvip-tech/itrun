@@ -43,7 +43,7 @@ function CodexTab() {
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, string>>({});
   const [fetchingModel, setFetchingModel] = useState(false);
   const [fetchedModels, setFetchedModels] = useState<import("@/lib/tauri").ModelInfo[]>([]);
   const [showModelList, setShowModelList] = useState(false);
@@ -74,8 +74,8 @@ function CodexTab() {
   const cancelEdit = () => setEditingId(null);
   const handleEdit = async () => { /* ... existing code ... */ };
   const handleTest = async (id: string) => {
-    setTesting(id); setTestResult(null);
-    try { const r = await testCodexProfile(id); setTestResult(r); } catch (e: any) { setTestResult(e.toString()); }
+    setTesting(id);
+    try { const r = await testCodexProfile(id); setTestResults(prev => ({ ...prev, [id]: r })); } catch (e: any) { setTestResults(prev => ({ ...prev, [id]: e.toString() })); }
     setTesting(null);
   };
   const handleFetchModel = async () => {
@@ -102,8 +102,9 @@ function CodexTab() {
         <div className="flex items-center justify-between">
           <div><p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Codex 官方配置</p><p className="text-xs text-gray-400 mt-0.5">{status?.backup_exists ? "已备份，可随时恢复" : "尚未备份，建议先备份"}</p></div>
           <div className="flex gap-2">
-            <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1"><Save className="h-3.5 w-3.5" />备份</button>
             <button onClick={handleRestore} disabled={!status?.backup_exists} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" />恢复</button>
+            <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1"><Save className="h-3.5 w-3.5" />备份</button>
+            {status?.backup_exists && <button onClick={() => { setEditingId("official"); setEditName("官方配置"); setEditKey(status.current_auth ? JSON.parse(status.current_auth).api_key || "" : ""); }} className="btn-secondary text-xs flex items-center gap-1"><Edit3 className="h-3 w-3" />编辑</button>}
           </div>
         </div>
         {status && (
@@ -128,7 +129,7 @@ function CodexTab() {
                 <div key={p.id} className="rounded-xl border-2 border-indigo-300 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={editName} onChange={e => setEditName(e.target.value)} className="input-field text-sm" /></div>
-                    <div><label className="text-xs text-gray-500 mb-1 block">模型</label><input value={editModel} onChange={e => setEditModel(e.target.value)} className="input-field text-sm" /></div>
+                    <div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2">{/* model + fetch */}<input value={editModel} onChange={e => setEditModel(e.target.value)} className="input-field text-sm flex-1" /><button type="button" onClick={async () => { if (!editKey.trim()) return; try { const models = await tryFetchModels("openai", editKey.trim(), editUrl.trim()); if (models.length > 0) setEditModel(models[0].id); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } }} className="btn-secondary text-xs flex items-center gap-1 shrink-0"><Download className="h-3 w-3" />获取</button></div></div>
                     <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={editKey} onChange={e => setEditKey(e.target.value)} className="input-field text-sm" /></div>
                     <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={editUrl} onChange={e => setEditUrl(e.target.value)} className="input-field text-sm" /></div>
                   </div>
@@ -150,9 +151,10 @@ function CodexTab() {
                   </button>
                   <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
                   <button onClick={() => startEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => handleTest(p.id)} disabled={testing === p.id} className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-emerald-50 transition-colors">
+                  <button onClick={() => handleTest(p.id)} disabled={testing === p.id} className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-emerald-50 transition-colors" title="测试延迟">
                     {testing === p.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
                   </button>
+                  {testResults[p.id] && testing === null && <span className={cn("text-[10px] font-medium ml-1", testResults[p.id].includes("OK") ? "text-emerald-500" : "text-red-500")}>{testResults[p.id]}</span>}
                 </div>
               </div>
               )))}

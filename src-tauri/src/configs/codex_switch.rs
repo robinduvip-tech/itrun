@@ -110,6 +110,13 @@ fn write_codex_config(base_url: &str, model: &str) -> Result<(), String> {
     // Set top-level relay fields
     table.insert("model_provider".into(), toml::Value::String("custom".into()));
     table.insert("model".into(), toml::Value::String(model.to_string()));
+    // Preserve or set Codex-required fields
+    if !table.contains_key("disable_response_storage") {
+        table.insert("disable_response_storage".into(), toml::Value::Boolean(true));
+    }
+    if !table.contains_key("model_reasoning_effort") {
+        table.insert("model_reasoning_effort".into(), toml::Value::String("medium".into()));
+    }
 
     // Ensure model_providers section exists
     if !table.contains_key("model_providers") {
