@@ -52,6 +52,16 @@ pub fn run() {
         }
     }
 
+    // Read close_to_tray setting from DB BEFORE tauri::Builder
+    let close_to_tray = {
+        let conn = db_conn.lock();
+        let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = 'close_to_tray'").ok();
+        stmt.as_mut()
+            .and_then(|s| s.query_row([], |row| row.get::<_, String>(0)).ok())
+            .map(|v| v == "true")
+            .unwrap_or(true)
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(db_conn.clone())
@@ -80,7 +90,7 @@ pub fn run() {
             commands::configs::read_config_file,
             commands::configs::write_config_file,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // ── System Tray ──
             let handle = app.handle();
             let _tray = TrayIconBuilder::new()
@@ -100,12 +110,17 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Intercept window close → hide to tray instead of quit
+            // Intercept window close → hide to tray (if enabled)
             if let Some(window) = app.get_webview_window("main") {
-                let window_clone = window.clone();
+                let w = window.clone();
                 window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        let _ = window_clone.hide();
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        if close_to_tray {
+                            let _ = w.hide();
+                        } else {
+                            std::process::exit(0);
+                        }
                     }
                 });
             }

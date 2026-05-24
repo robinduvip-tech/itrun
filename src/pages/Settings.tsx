@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Sun, Moon, Trash2, AlertTriangle } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useHistoryStore } from "@/stores/historyStore";
+import { setSetting } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 export default function Settings() {
-  const { theme, proxyPort, setTheme } = useSettingsStore();
+  const { theme, proxyPort, settings, setTheme } = useSettingsStore();
   const clearHistory = useHistoryStore((s) => s.clearHistory);
   const [showClear, setShowClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const closeToTray = settings.close_to_tray !== "false";
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-surface-950">
@@ -20,6 +22,12 @@ export default function Settings() {
           <div className="flex gap-3">
             <Btn icon={<Sun className="h-4 w-4" />} label="浅色" active={theme==="light"} onClick={() => setTheme("light")} />
             <Btn icon={<Moon className="h-4 w-4" />} label="深色" active={theme==="dark"} onClick={() => setTheme("dark")} />
+          </div>
+        </Section>
+        <Section label="窗口">
+          <div className="flex items-center justify-between">
+            <div><p className="text-sm font-medium text-gray-800 dark:text-gray-200">关闭时最小化到托盘</p><p className="text-xs text-gray-400 mt-0.5">点击关闭按钮时隐藏到托盘而非退出</p></div>
+            <Toggle value={closeToTray} onChange={(v) => setSetting("close_to_tray", String(v))} />
           </div>
         </Section>
         <Section label="数据">
@@ -47,3 +55,4 @@ export default function Settings() {
 function Section({label,children}:{label:string;children:React.ReactNode}){return <div><p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{label}</p><div className="space-y-3">{children}</div></div>}
 function Btn({icon,label,active,onClick}:{icon:React.ReactNode;label:string;active:boolean;onClick:()=>void}){return <button onClick={onClick} className={cn("flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm",active?"border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300":"border-gray-200 text-gray-400 dark:border-gray-700")}>{icon}{label}</button>}
 function Row({label,value,badge}:{label:string;value:string;badge?:boolean}){return <div className="flex items-center justify-between py-1.5"><span className="text-sm text-gray-400">{label}</span>{badge?<span className="rounded-md bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">{value}</span>:<span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>}</div>}
+function Toggle({value,onChange}:{value:boolean;onChange:(v:boolean)=>void}){return <button onClick={()=>onChange(!value)} className={cn("relative h-6 w-11 rounded-full transition-colors",value?"bg-emerald-500":"bg-gray-300 dark:bg-gray-700")}><span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",value&&"translate-x-5")}/></button>}
