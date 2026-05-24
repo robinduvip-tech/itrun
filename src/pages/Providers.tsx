@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Server, Shield, Settings } from "lucide-react";
 import ProviderForm from "@/components/providers/ProviderForm";
 import { useProviderStore } from "@/stores/providerStore";
@@ -22,6 +22,7 @@ const typeLabel: Record<string, string> = {
 export default function Providers() {
   const providers = useProviderStore((s) => s.providers);
   const isLoading = useProviderStore((s) => s.isLoading);
+  const loadProviders = useProviderStore((s) => s.loadProviders);
   const addProvider = useProviderStore((s) => s.addProvider);
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const testConnection = useProviderStore((s) => s.testConnection);
@@ -32,6 +33,8 @@ export default function Providers() {
   const [formOpen, setFormOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Provider | null>(null);
+
+  useEffect(() => { loadProviders(); }, [loadProviders]);
 
   const handleAdd = () => { setSelected(null); setIsNew(true); setFormOpen(true); };
   const handleSelect = (p: Provider) => { setSelected(p); setIsNew(false); setFormOpen(true); };
