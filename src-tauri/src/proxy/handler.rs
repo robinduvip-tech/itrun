@@ -15,17 +15,17 @@ use crate::db::history;
 use crate::middleware::transform;
 use super::sse;
 
-/// Global DB connection for handler access. Set from lib.rs during startup.
 static HANDLER_DB: once_cell::sync::OnceCell<Arc<Mutex<Connection>>> = once_cell::sync::OnceCell::new();
 
 fn get_db_conn() -> Option<Arc<Mutex<Connection>>> {
     HANDLER_DB.get().cloned()
 }
 
-/// Called from lib.rs to set the global DB connection for handler access.
 pub fn set_handler_db(conn: Arc<Mutex<Connection>>) {
     let _ = HANDLER_DB.set(conn);
 }
+
+// ── Helpers ──────────────────────────────────────────────────────
 
 fn update_history_error(request_id: &str, error: &str) {
     if let Some(conn) = get_db_conn() {
@@ -34,196 +34,230 @@ fn update_history_error(request_id: &str, error: &str) {
     }
 }
 
+fn extract_auth_key(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .map(String::from)
+        .or_else(|| {
+            headers
+                .get("x-api-key")
+                .and_then(|v| v.to_str().ok())
+                .map(String::from)
+        })
+}
+
+fn extract_base_url(_headers: &HeaderMap, model: &str) -> String {
+    // Detect provider from model prefix or name
+    if model.starts_with("claude") || model.contains("claude") {
+        "https://api.anthropic.com/v1".to_string()
+    } else if model.starts_with("gemini") || model.contains("gemini") {
+        "https://generativelanguage.googleapis.com/v1beta".to_string()
+    } else {
+        // Default to OpenAI-compatible
+        "https://api.openai.com/v1".to_string()
+    }
+}
+
+/// Transparent proxy: forward request directly to upstream using client's API key.
+async fn transparent_proxy(
+    headers: &HeaderMap,
+    body: &Value,
+    model: &str,
+    stream: bool,
+    path: &str,
+) -> Result<Response, String> {
+    let api_key = extract_auth_key(headers)
+        .ok_or_else(|| "No API key found — please set Authorization header or configure a Provider in iTrun".to_string())?;
+
+    let base_url = extract_base_url(headers, model);
+    let url = format!("{}{}", base_url.trim_end_matches('/'), path);
+    let client = reqwest::Client::new();
+
+    if stream {
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", &api_key))
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| format!("Upstream request failed: {}", e))?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let err_body = response.text().await.unwrap_or_default();
+            return Err(format!("Upstream error {}: {}", status.as_u16(), err_body));
+        }
+
+        let byte_stream = response.bytes_stream();
+        let mapped = futures::StreamExt::map(byte_stream, |item| {
+            match item {
+                Ok(bytes) => Ok(bytes),
+                Err(e) => Err(format!("Stream error: {}", e)),
+            }
+        });
+        let boxed: std::pin::Pin<Box<dyn futures::Stream<Item = Result<bytes::Bytes, String>> + Send>> = Box::pin(mapped);
+        let sse_stream = sse::create_sse_stream(boxed, String::new());
+
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            .header("Connection", "keep-alive")
+            .body(Body::from_stream(sse_stream))
+            .unwrap())
+    } else {
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", &api_key))
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| format!("Upstream request failed: {}", e))?;
+
+        let status = response.status();
+        let resp_body: Value = response.json().await.map_err(|e| format!("Parse response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(serde_json::to_string(&resp_body).unwrap_or_else(|_| format!("HTTP {}", status.as_u16())));
+        }
+
+        Ok(JsonResponse(resp_body).into_response())
+    }
+}
+
+// ── Route Handlers ───────────────────────────────────────────────
+
 pub async fn chat_completions(
-    _headers: HeaderMap,
+    headers: HeaderMap,
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
-    let model_name = transform::extract_model_name(&body)
-        .unwrap_or_else(|| "unknown".to_string());
+    let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-4o".to_string());
     let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
-
     let request_id = Uuid::new_v4().to_string();
     let timestamp = chrono::Utc::now();
 
-    let provider_info = ProviderRegistry::get_by_model(&model_name);
-
-    if provider_info.is_none() {
-        return error_response(
-            StatusCode::BAD_REQUEST,
-            &format!("No provider found for model: {}", model_name),
-        );
-    }
-
-    let (provider_id, provider, actual_model) = provider_info.unwrap();
-
-    // Log request to history
-    if let Some(conn) = get_db_conn() {
-        let conn = conn.lock();
-        if let Ok(preview) = serde_json::to_string(&json!({
-            "model": actual_model,
-            "stream": stream,
-        })) {
-            let _ = history::insert_request(
-                &conn,
-                &request_id,
-                "chat_completion",
-                &provider_id,
-                &actual_model,
-                &preview,
-            );
-        }
-    }
-
-    if stream {
-        match provider.chat_completion_stream(&actual_model, body.clone()).await {
-            Ok(stream_body) => {
-                let sse_stream = sse::create_sse_stream(stream_body, request_id.clone());
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "text/event-stream")
-                    .header("Cache-Control", "no-cache")
-                    .header("Connection", "keep-alive")
-                    .body(Body::from_stream(sse_stream))
-                    .unwrap()
-            }
-            Err(e) => {
-                update_history_error(&request_id, &e);
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, &e)
+    // Try configured provider first
+    if let Some((provider_id, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+        // Log to history
+        if let Some(conn) = get_db_conn() {
+            let conn = conn.lock();
+            if let Ok(preview) = serde_json::to_string(&json!({"model": &actual_model, "stream": stream})) {
+                let _ = history::insert_request(&conn, &request_id, "chat_completion", &provider_id, &actual_model, &preview);
             }
         }
-    } else {
-        match provider.chat_completion(&actual_model, body).await {
-            Ok(response_body) => {
-                let latency_ms = (chrono::Utc::now() - timestamp).num_milliseconds() as i64;
-                let tokens = response_body
-                    .get("usage")
-                    .and_then(|u| u.get("total_tokens"))
-                    .and_then(|t| t.as_i64())
-                    .unwrap_or(0);
 
-                let preview = response_body
-                    .get("choices")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|choice| choice.get("message"))
-                    .and_then(|msg| msg.get("content"))
-                    .and_then(|c| c.as_str())
-                    .map(|s| s.chars().take(200).collect::<String>());
-
-                if let Some(conn) = get_db_conn() {
-                    let conn = conn.lock();
-                    let _ = history::update_response(
-                        &conn,
-                        &request_id,
-                        "success",
-                        tokens,
-                        latency_ms,
-                        preview.as_deref(),
-                    );
+        if stream {
+            match provider.chat_completion_stream(&actual_model, body.clone()).await {
+                Ok(stream_body) => {
+                    let sse_stream = sse::create_sse_stream(stream_body, request_id);
+                    return Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Content-Type", "text/event-stream")
+                        .header("Cache-Control", "no-cache")
+                        .header("Connection", "keep-alive")
+                        .body(Body::from_stream(sse_stream))
+                        .unwrap();
                 }
-
-                JsonResponse(response_body).into_response()
+                Err(e) => {
+                    update_history_error(&request_id, &e);
+                    return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e);
+                }
             }
-            Err(e) => {
-                update_history_error(&request_id, &e);
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, &e)
+        } else {
+            match provider.chat_completion(&actual_model, body).await {
+                Ok(response_body) => {
+                    let latency_ms = (chrono::Utc::now() - timestamp).num_milliseconds() as i64;
+                    if let Some(conn) = get_db_conn() {
+                        let conn = conn.lock();
+                        let tokens = response_body.get("usage").and_then(|u| u.get("total_tokens")).and_then(|t| t.as_i64()).unwrap_or(0);
+                        let preview: Option<String> = response_body.get("choices").and_then(|c| c.as_array())
+                            .and_then(|arr| arr.first()).and_then(|c| c.get("message")).and_then(|m| m.get("content"))
+                            .and_then(|c| c.as_str()).map(|s| s.chars().take(200).collect::<String>());
+                        let _ = history::update_response(&conn, &request_id, "success", tokens, latency_ms, preview.as_deref());
+                    }
+                    return JsonResponse(response_body).into_response();
+                }
+                Err(e) => {
+                    update_history_error(&request_id, &e);
+                    return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e);
+                }
             }
         }
+    }
+
+    // Fallback: transparent proxy using client's own API key
+    match transparent_proxy(&headers, &body, &model_name, stream, "/chat/completions").await {
+        Ok(response) => response,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &format!("No provider configured for '{}' and transparent proxy failed: {}", model_name, e)),
     }
 }
 
 pub async fn completions(
+    headers: HeaderMap,
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
-    let model_name = transform::extract_model_name(&body)
-        .unwrap_or_else(|| "unknown".to_string());
+    let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-3.5-turbo-instruct".to_string());
     let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    let request_id = Uuid::new_v4().to_string();
-    let timestamp = chrono::Utc::now();
-
-    let provider_info = ProviderRegistry::get_by_model(&model_name);
-
-    if provider_info.is_none() {
-        return error_response(
-            StatusCode::BAD_REQUEST,
-            &format!("No provider found for model: {}", model_name),
-        );
-    }
-
-    let (provider_id, provider, actual_model) = provider_info.unwrap();
-
-    if let Some(conn) = get_db_conn() {
-        let conn = conn.lock();
-        if let Ok(preview) = serde_json::to_string(&json!({
-            "model": actual_model,
-            "stream": stream,
-        })) {
-            let _ = history::insert_request(
-                &conn,
-                &request_id,
-                "completion",
-                &provider_id,
-                &actual_model,
-                &preview,
-            );
-        }
-    }
-
-    if stream {
-        match provider.chat_completion_stream(&actual_model, body).await {
-            Ok(stream_body) => {
-                let sse_stream = sse::create_sse_stream(stream_body, request_id.clone());
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Content-Type", "text/event-stream")
-                    .header("Cache-Control", "no-cache")
-                    .header("Connection", "keep-alive")
-                    .body(Body::from_stream(sse_stream))
-                    .unwrap()
-            }
-            Err(e) => {
-                update_history_error(&request_id, &e);
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, &e)
-            }
-        }
-    } else {
-        match provider.chat_completion(&actual_model, body).await {
-            Ok(response_body) => {
-                let latency_ms = (chrono::Utc::now() - timestamp).num_milliseconds() as i64;
-                let tokens = response_body
-                    .get("usage")
-                    .and_then(|u| u.get("total_tokens"))
-                    .and_then(|t| t.as_i64())
-                    .unwrap_or(0);
-
-                let preview = response_body
-                    .get("choices")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|choice| choice.get("text"))
-                    .and_then(|c| c.as_str())
-                    .map(|s| s.chars().take(200).collect::<String>());
-
-                if let Some(conn) = get_db_conn() {
-                    let conn = conn.lock();
-                    let _ = history::update_response(
-                        &conn,
-                        &request_id,
-                        "success",
-                        tokens,
-                        latency_ms,
-                        preview.as_deref(),
-                    );
+    // Try configured provider
+    if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+        if stream {
+            match provider.chat_completion_stream(&actual_model, body).await {
+                Ok(s) => {
+                    let sse = sse::create_sse_stream(s, String::new());
+                    return Response::builder().status(200).header("Content-Type", "text/event-stream").body(Body::from_stream(sse)).unwrap();
                 }
-
-                JsonResponse(response_body).into_response()
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
             }
-            Err(e) => {
-                update_history_error(&request_id, &e);
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, &e)
+        } else {
+            match provider.chat_completion(&actual_model, body).await {
+                Ok(r) => return JsonResponse(r).into_response(),
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
             }
         }
+    }
+
+    // Transparent proxy fallback
+    match transparent_proxy(&headers, &body, &model_name, stream, "/completions").await {
+        Ok(r) => r,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
+    }
+}
+
+pub async fn responses(
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    // /v1/responses is the Codex Responses API endpoint
+    let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-4o".to_string());
+    let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    // Try configured provider
+    if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+        if stream {
+            match provider.chat_completion_stream(&actual_model, body).await {
+                Ok(s) => {
+                    let sse = sse::create_sse_stream(s, String::new());
+                    return Response::builder().status(200).header("Content-Type", "text/event-stream").body(Body::from_stream(sse)).unwrap();
+                }
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+            }
+        } else {
+            match provider.chat_completion(&actual_model, body).await {
+                Ok(r) => return JsonResponse(r).into_response(),
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+            }
+        }
+    }
+
+    // Transparent proxy
+    match transparent_proxy(&headers, &body, &model_name, stream, "/responses").await {
+        Ok(r) => r,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
     }
 }
 
@@ -233,83 +267,72 @@ pub async fn list_models() -> impl IntoResponse {
 
     for (provider_id, models) in &all_models {
         for model in models {
-            let model_json = json!({
+            data.push(json!({
                 "id": format!("{}/{}", provider_id, model.id),
                 "object": "model",
                 "created": chrono::Utc::now().timestamp(),
                 "owned_by": model.provider_name,
-                "name": model.name.clone(),
-                "max_tokens": model.max_tokens,
-                "pricing": model.pricing,
-            });
-            data.push(model_json);
+            }));
         }
     }
 
-    JsonResponse(json!({
-        "object": "list",
-        "data": data,
-    }))
+    // If no configured providers, return common models as reference
+    if data.is_empty() {
+        let defaults = [
+            ("gpt-4o", "openai"),
+            ("gpt-4o-mini", "openai"),
+            ("gpt-4-turbo", "openai"),
+            ("gpt-3.5-turbo", "openai"),
+            ("claude-opus-4-20250514", "anthropic"),
+            ("claude-sonnet-4-20250514", "anthropic"),
+            ("claude-haiku-3-5-20241022", "anthropic"),
+            ("deepseek-chat", "deepseek"),
+            ("deepseek-reasoner", "deepseek"),
+            ("gemini-2.5-pro", "google"),
+            ("gemini-2.0-flash", "google"),
+            ("moonshot-v1-8k", "moonshot"),
+            ("qwen-turbo", "alibaba"),
+            ("qwen-plus", "alibaba"),
+        ];
+        for (id, owner) in &defaults {
+            data.push(json!({
+                "id": id,
+                "object": "model",
+                "created": chrono::Utc::now().timestamp(),
+                "owned_by": owner,
+            }));
+        }
+    }
+
+    JsonResponse(json!({ "object": "list", "data": data }))
 }
 
 pub async fn embeddings(
+    headers: HeaderMap,
     Json(body): Json<Value>,
 ) -> impl IntoResponse {
-    let model_name = transform::extract_model_name(&body)
-        .unwrap_or_else(|| "text-embedding-ada-002".to_string());
+    let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "text-embedding-ada-002".to_string());
 
-    let provider_info = ProviderRegistry::get_by_model(&model_name);
-
-    if provider_info.is_none() {
-        return error_response(
-            StatusCode::BAD_REQUEST,
-            &format!("No provider found for model: {}", model_name),
-        );
+    if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+        match provider.chat_completion(&actual_model, body).await {
+            Ok(r) => return JsonResponse(r).into_response(),
+            Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+        }
     }
 
-    let (_provider_id, provider, actual_model) = provider_info.unwrap();
-
-    match provider.chat_completion(&actual_model, body).await {
-        Ok(response_body) => JsonResponse(response_body).into_response(),
-        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+    match transparent_proxy(&headers, &body, &model_name, false, "/embeddings").await {
+        Ok(r) => r,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
     }
 }
 
-pub fn model_to_provider(model: &str) -> Option<(String, String)> {
-    if let Some((prefix, actual)) = model.split_once('/') {
-        if ProviderRegistry::get(prefix).is_some() {
-            return Some((prefix.to_string(), actual.to_string()));
-        }
-    }
-
-    if let Some((id, _provider)) = ProviderRegistry::get_default() {
-        return Some((id, model.to_string()));
-    }
-
-    let all = ProviderRegistry::list_all();
-    for (provider_id, models) in &all {
-        for m in models {
-            if m.id == model {
-                return Some((provider_id.clone(), model.to_string()));
-            }
-        }
-    }
-
-    None
-}
-
-pub fn error_response(status: StatusCode, msg: &str) -> Response {
-    let body = json!({
-        "error": {
-            "message": msg,
-            "type": "api_error",
-            "code": status.as_u16(),
-        }
-    });
-
+pub fn error_response(status: impl Into<StatusCode>, msg: &str) -> Response {
+    let code = status.into();
     Response::builder()
-        .status(status)
+        .status(code)
         .header("Content-Type", "application/json")
-        .body(Body::from(body.to_string()))
+        .body(Body::from(
+            json!({"error": {"message": msg, "type": "api_error", "code": code.as_u16()}}).to_string(),
+        ))
         .unwrap()
 }

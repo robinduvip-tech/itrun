@@ -14,6 +14,7 @@ pub fn build_router() -> Router {
     Router::new()
         .route("/v1/chat/completions", axum::routing::post(handler::chat_completions))
         .route("/v1/completions", axum::routing::post(handler::completions))
+        .route("/v1/responses", axum::routing::post(handler::responses))
         .route("/v1/models", axum::routing::get(handler::list_models))
         .route("/v1/embeddings", axum::routing::post(handler::embeddings))
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024)) // 10MB
