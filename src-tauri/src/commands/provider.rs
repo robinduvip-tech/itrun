@@ -232,3 +232,23 @@ pub async fn check_all_providers_health() -> Result<Vec<ProviderHealth>, String>
     }
     Ok(results)
 }
+
+#[command]
+pub async fn debug_providers(db: State<'_, Arc<Mutex<Connection>>>) -> Result<String, String> {
+    let conn = db.lock();
+    let mut stmt = conn.prepare("SELECT id, name, provider_type, api_key, base_url, config, is_default FROM providers").map_err(|e| e.to_string())?;
+    let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+    let mut result = String::from("Providers in DB:\n");
+    while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+        let id: String = row.get(0).unwrap_or_default();
+        let name: String = row.get(1).unwrap_or_default();
+        let ptype: String = row.get(2).unwrap_or_default();
+        let key_len: usize = row.get::<_, String>(3).map(|s| s.len()).unwrap_or(0);
+        let base: String = row.get(4).unwrap_or_default();
+        let config_str: String = row.get(5).unwrap_or_default();
+        let is_def: i32 = row.get(6).unwrap_or(0);
+        result.push_str(&format!("  {} | {} | {} | key_len={} | base={} | config={} | default={}\n",
+            id, name, ptype, key_len, base, &config_str[..config_str.len().min(60)], is_def));
+    }
+    Ok(result)
+}

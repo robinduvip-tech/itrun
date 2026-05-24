@@ -13,7 +13,13 @@ pub fn init_db(db_path: &str) -> Result<Connection, String> {
     conn.execute_batch("PRAGMA busy_timeout=5000;").ok();
     conn.execute_batch("PRAGMA foreign_keys=ON;").ok();
 
+    // Recover any un-checkpointed data from previous crash
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);").ok();
+
     migrate::run_migrations(&conn)?;
+
+    // Auto-checkpoint every 1000 pages (~4MB of WAL)
+    conn.execute_batch("PRAGMA wal_autocheckpoint=1000;").ok();
 
     tracing::info!("Database initialized successfully at {}", db_path);
     Ok(conn)
