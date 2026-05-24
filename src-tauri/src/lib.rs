@@ -105,6 +105,8 @@ pub fn run() {
             commands::configs::scan_configs,
             commands::configs::read_config_file,
             commands::configs::write_config_file,
+            commands::configs::get_codex_config_status,
+            commands::configs::switch_codex_mode,
         ])
         .setup(move |app| {
             // ── System Tray ──

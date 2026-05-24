@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub mod codex_switch;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigFile {
     /// Display name for this config

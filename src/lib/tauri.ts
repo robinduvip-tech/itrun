@@ -275,3 +275,27 @@ export async function testProviderHealth(id: string): Promise<ProviderHealth> {
 export async function checkAllProvidersHealth(): Promise<ProviderHealth[]> {
   return invoke<ProviderHealth[]>("check_all_providers_health");
 }
+
+// ── Codex Config Switcher ──────────────────────────────────────
+
+export interface CodexConfigStatus {
+  mode: string;
+  auth_json_exists: boolean;
+  config_toml_exists: boolean;
+  backup_exists: boolean;
+  auth_json_preview: string;
+  config_toml_preview: string;
+}
+
+export async function getCodexConfigStatus(): Promise<CodexConfigStatus> {
+  return invoke<CodexConfigStatus>("get_codex_config_status");
+}
+
+export async function switchCodexMode(
+  mode: string,
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+): Promise<CodexConfigStatus> {
+  return invoke<CodexConfigStatus>("switch_codex_mode", { mode, apiKey, baseUrl, model });
+}
