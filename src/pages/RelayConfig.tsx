@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw, Edit3 } from "lucide-react";
+import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw, Edit3, Wifi, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, updateCodexProfile, setSetting } from "@/lib/tauri";
+import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, updateCodexProfile, testCodexProfile, tryFetchModels, setSetting } from "@/lib/tauri";
 import type { CodexProfile, CodexStatus } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/settingsStore";
 
@@ -42,6 +42,9 @@ function CodexTab() {
   const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [fetchingModel, setFetchingModel] = useState(false);
   const [editName, setEditName] = useState("");
   const [editKey, setEditKey] = useState("");
   const [editUrl, setEditUrl] = useState("");
@@ -67,10 +70,18 @@ function CodexTab() {
   const handleDelete = async (id: string) => { try { await deleteCodexProfile(id); await refresh(); } catch {} };
   const startEdit = (p: CodexProfile) => { setEditingId(p.id); setEditName(p.name); setEditKey(p.api_key); setEditUrl(p.base_url); setEditModel(p.model); };
   const cancelEdit = () => setEditingId(null);
-  const handleEdit = async () => {
-    if (!editingId || !editName.trim()) return;
-    try { await updateCodexProfile(editingId, editName.trim(), editKey.trim(), editUrl.trim(), editModel.trim()); setEditingId(null); await refresh(); showMsg("ok", "ok"); }
+  const handleEdit = async () => { /* ... existing code ... */ };
+  const handleTest = async (id: string) => {
+    setTesting(id); setTestResult(null);
+    try { const r = await testCodexProfile(id); setTestResult(r); } catch (e: any) { setTestResult(e.toString()); }
+    setTesting(null);
+  };
+  const handleFetchModel = async () => {
+    if (!apiKey.trim()) return;
+    setFetchingModel(true);
+    try { const models = await tryFetchModels("openai", apiKey.trim(), baseUrl.trim()); if (models.length > 0) setModel(models[0].id); showMsg("ok", "ok"); }
     catch (e: any) { showMsg("err", e.toString()); }
+    setFetchingModel(false);
   };
   const handleBackup = async () => { try { await backupCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
   const handleRestore = async () => { try { await restoreCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
@@ -132,6 +143,9 @@ function CodexTab() {
                   </button>
                   <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
                   <button onClick={() => startEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => handleTest(p.id)} disabled={testing === p.id} className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-emerald-50 transition-colors">
+                    {testing === p.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
+                  </button>
                 </div>
               </div>
               )))}
@@ -141,7 +155,7 @@ function CodexTab() {
           <div className="rounded-xl border-2 border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={name} onChange={e => setName(e.target.value)} placeholder="公司中转" className="input-field text-sm" /></div>
-              <div><label className="text-xs text-gray-500 mb-1 block">模型</label><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm" /></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2"><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm flex-1" /><button type="button" onClick={handleFetchModel} disabled={fetchingModel} className="btn-secondary text-xs flex items-center gap-1 shrink-0">{fetchingModel ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}获取</button></div></div>
               <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." className="input-field text-sm" /></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="input-field text-sm" /></div>
             </div>

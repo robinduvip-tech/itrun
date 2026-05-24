@@ -350,3 +350,7 @@ export async function updateCodexProfile(
 ): Promise<CodexStatus> {
   return invoke<CodexStatus>("update_codex_profile", { id, name, apiKey, baseUrl, model });
 }
+
+export async function testCodexProfile(id: string): Promise<string> {
+  return invoke<string>("test_codex_profile", { id });
+}
