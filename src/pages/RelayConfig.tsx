@@ -134,7 +134,7 @@ function CodexTab() {
                   <button onClick={() => startEdit(p)} className="p-1.5 text-gray-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 transition-colors"><Edit3 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
-              )}
+              )))}
           </div>
         )}
         {showAdd && (
