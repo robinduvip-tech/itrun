@@ -45,6 +45,8 @@ function CodexTab() {
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [fetchingModel, setFetchingModel] = useState(false);
+  const [fetchedModels, setFetchedModels] = useState<import("@/lib/tauri").ModelInfo[]>([]);
+  const [showModelList, setShowModelList] = useState(false);
   const [editName, setEditName] = useState("");
   const [editKey, setEditKey] = useState("");
   const [editUrl, setEditUrl] = useState("");
@@ -79,10 +81,15 @@ function CodexTab() {
   const handleFetchModel = async () => {
     if (!apiKey.trim()) return;
     setFetchingModel(true);
-    try { const models = await tryFetchModels("openai", apiKey.trim(), baseUrl.trim()); if (models.length > 0) setModel(models[0].id); showMsg("ok", "ok"); }
-    catch (e: any) { showMsg("err", e.toString()); }
+    try {
+      const models = await tryFetchModels("openai", apiKey.trim(), baseUrl.trim());
+      setFetchedModels(models);
+      setShowModelList(true);
+      if (models.length === 0) showMsg("err", "未获取到模型");
+    } catch (e: any) { showMsg("err", e.toString()); }
     setFetchingModel(false);
   };
+  const selectFetchedModel = (id: string) => { setModel(id); setShowModelList(false); };
   const handleBackup = async () => { try { await backupCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
   const handleRestore = async () => { try { await restoreCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
 
@@ -155,7 +162,7 @@ function CodexTab() {
           <div className="rounded-xl border-2 border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={name} onChange={e => setName(e.target.value)} placeholder="公司中转" className="input-field text-sm" /></div>
-              <div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2"><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm flex-1" /><button type="button" onClick={handleFetchModel} disabled={fetchingModel} className="btn-secondary text-xs flex items-center gap-1 shrink-0">{fetchingModel ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}获取</button></div></div>
+<div><label className="text-xs text-gray-500 mb-1 block">模型</label><div className="flex gap-2 relative"><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm flex-1" /><button type="button" onClick={handleFetchModel} disabled={fetchingModel} className="btn-secondary text-xs flex items-center gap-1 shrink-0">{fetchingModel ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}获取</button>{showModelList && fetchedModels.length > 0 && <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">{fetchedModels.map(m => <button key={m.id} type="button" onClick={()=>selectFetchedModel(m.id)} className={cn("flex w-full items-center px-3 py-2 text-xs text-left hover:bg-indigo-50 dark:hover:bg-indigo-500/10", model===m.id?"bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300":"text-gray-700 dark:text-gray-300")}><Check className={cn("h-3 w-3 mr-2 shrink-0", model===m.id?"text-indigo-500":"opacity-0")}/><span className="truncate font-mono">{m.id}</span></button>)}</div>}</div></div>
               <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." className="input-field text-sm" /></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="input-field text-sm" /></div>
             </div>
