@@ -173,3 +173,23 @@ pub fn get_status() -> CodexStatus {
         current_config,
     }
 }
+
+/// Update an existing profile
+pub fn update_profile(id: &str, name: &str, api_key: &str, base_url: &str, model: &str) -> Result<CodexProfiles, String> {
+    let mut profiles = load_profiles();
+    let p = profiles.profiles.iter_mut()
+        .find(|p| p.id == id)
+        .ok_or_else(|| format!("Profile not found: {}", id))?;
+    p.name = name.to_string();
+    p.api_key = api_key.to_string();
+    p.base_url = base_url.to_string();
+    p.model = model.to_string();
+    save_profiles(&profiles)?;
+
+    // If this is the active profile, re-apply it
+    if profiles.active.as_deref() == Some(id) {
+        switch_to_profile(id)?;
+    }
+
+    Ok(profiles)
+}

@@ -344,3 +344,9 @@ export async function backupCodexOfficial(): Promise<CodexStatus> {
 export async function restoreCodexOfficial(): Promise<CodexStatus> {
   return invoke<CodexStatus>("restore_codex_official");
 }
+
+export async function updateCodexProfile(
+  id: string, name: string, apiKey: string, baseUrl: string, model: string
+): Promise<CodexStatus> {
+  return invoke<CodexStatus>("update_codex_profile", { id, name, apiKey, baseUrl, model });
+}

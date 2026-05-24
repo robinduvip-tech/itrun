@@ -112,6 +112,7 @@ pub fn run() {
             commands::configs::switch_codex_profile,
             commands::configs::backup_codex_official,
             commands::configs::restore_codex_official,
+            commands::configs::update_codex_profile,
         ])
         .setup(move |app| {
             // ── System Tray ──

@@ -55,3 +55,11 @@ pub async fn restore_codex_official() -> Result<CodexStatus, String> {
     codex_switch::restore_official()?;
     Ok(codex_switch::get_status())
 }
+
+#[command]
+pub async fn update_codex_profile(
+    id: String, name: String, api_key: String, base_url: String, model: String,
+) -> Result<CodexStatus, String> {
+    codex_switch::update_profile(&id, &name, &api_key, &base_url, &model)?;
+    Ok(codex_switch::get_status())
+}
