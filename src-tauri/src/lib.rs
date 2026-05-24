@@ -9,6 +9,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use tauri::Manager;
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState};
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
 
 use db::init_db;
 use provider::registry::ProviderRegistry;
@@ -93,9 +94,18 @@ pub fn run() {
         .setup(move |app| {
             // ── System Tray ──
             let handle = app.handle();
+            let quit_item = MenuItemBuilder::with_id("quit", "退出 iTrun").build(app)?;
+            let tray_menu = MenuBuilder::new(app).item(&quit_item).build()?;
+
             let _tray = TrayIconBuilder::new()
                 .icon(handle.default_window_icon().unwrap().clone())
                 .tooltip("iTrun — AI 中转客户端")
+                .menu(&tray_menu)
+                .on_menu_event(move |app, event| {
+                    if event.id() == "quit" {
+                        app.exit(0);
+                    }
+                })
                 .on_tray_icon_event(move |tray, event| {
                     if let tauri::tray::TrayIconEvent::Click {
                         button: MouseButton::Left,
