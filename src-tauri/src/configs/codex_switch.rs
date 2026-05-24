@@ -33,13 +33,14 @@ fn config_backup() -> PathBuf { codex_dir().join("config.toml.backup") }
 
 pub fn load_profiles() -> CodexProfiles {
     let _ = std::fs::create_dir_all(codex_dir());
-    if let Ok(content) = std::fs::read_to_string(profiles_path()) {
+    let mut p = if let Ok(content) = std::fs::read_to_string(profiles_path()) {
         serde_json::from_str(&content).unwrap_or_default()
     } else {
-        let mut p = CodexProfiles::default();
-        p.official_backup_exists = auth_backup().exists();
-        p
-    }
+        CodexProfiles::default()
+    };
+    // Always check actual backup file existence (profiles.json may have stale state)
+    p.official_backup_exists = auth_backup().exists();
+    p
 }
 
 fn save_profiles(profiles: &CodexProfiles) -> Result<(), String> {
@@ -89,8 +90,8 @@ pub fn switch_to_profile(id: &str) -> Result<CodexProfiles, String> {
         profiles = load_profiles();
     }
 
-    // Write auth.json
-    let auth = serde_json::json!({ "api_key": &profile.api_key });
+    // Write auth.json — Codex uses OPENAI_API_KEY, not api_key
+    let auth = serde_json::json!({ "OPENAI_API_KEY": &profile.api_key });
     std::fs::write(auth_path(), serde_json::to_string_pretty(&auth).unwrap_or_default())
         .map_err(|e| format!("Write auth.json: {}", e))?;
 
