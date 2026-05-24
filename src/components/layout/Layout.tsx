@@ -49,20 +49,31 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-      {/* Custom title bar — draggable, no-drag on buttons */}
-      <div data-tauri-drag-region className="flex h-8 shrink-0 items-center justify-end bg-gray-100 dark:bg-[#1a1a1f] px-1 select-none">
-        <button onClick={handleMinimize}
-          className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-gray-200 dark:hover:bg-surface-700 transition-colors">
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-        <button onClick={handleMaximize}
-          className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-gray-200 dark:hover:bg-surface-700 transition-colors">
-          {isMaximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
-        </button>
-        <button onClick={handleClose}
-          className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-colors">
-          <X className="h-4 w-4" />
-        </button>
+      {/* Custom title bar — draggable, logo left, buttons right */}
+      <div data-tauri-drag-region className="flex h-8 shrink-0 items-center justify-between bg-gray-100 dark:bg-[#1a1a1f] select-none">
+        {/* Logo */}
+        <div className="flex items-center gap-2 pl-3">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-emerald-600">
+            <span className="text-[9px] font-bold text-white">iT</span>
+          </div>
+          <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">iTrun</span>
+        </div>
+
+        {/* Window controls */}
+        <div className="flex items-center px-1">
+          <button onClick={handleMinimize}
+            className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-gray-200 dark:hover:bg-surface-700 transition-colors">
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={handleMaximize}
+            className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-gray-200 dark:hover:bg-surface-700 transition-colors">
+            {isMaximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+          </button>
+          <button onClick={handleClose}
+            className="flex h-7 w-10 items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
