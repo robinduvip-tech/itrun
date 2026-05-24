@@ -115,6 +115,7 @@ pub fn run() {
             commands::configs::restore_codex_official,
             commands::configs::update_codex_profile,
             commands::configs::test_codex_profile,
+            commands::configs::write_codex_files,
         ])
         .setup(move |app| {
             // ── System Tray ──

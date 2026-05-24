@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw, Edit3, Wifi, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, updateCodexProfile, testCodexProfile, tryFetchModels, setSetting } from "@/lib/tauri";
+import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, updateCodexProfile, testCodexProfile, tryFetchModels, writeCodexFiles, setSetting } from "@/lib/tauri";
 import type { CodexProfile, CodexStatus } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/settingsStore";
 
@@ -51,6 +51,9 @@ function CodexTab() {
   const [editKey, setEditKey] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [editModel, setEditModel] = useState("");
+  const [editingOfficial, setEditingOfficial] = useState(false);
+  const [officialAuth, setOfficialAuth] = useState("");
+  const [officialConfig, setOfficialConfig] = useState("");
 
   const refresh = async () => { try { setStatus(await getCodexStatus()); } catch {} setLoading(false); };
   useEffect(() => { refresh(); }, []);
@@ -104,14 +107,36 @@ function CodexTab() {
           <div className="flex gap-2">
             <button onClick={handleRestore} disabled={!status?.backup_exists} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" />恢复</button>
             <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1"><Save className="h-3.5 w-3.5" />备份</button>
-            {status?.backup_exists && <button onClick={() => { setEditingId("official"); setEditName("官方配置"); setEditKey(status.current_auth ? JSON.parse(status.current_auth).api_key || "" : ""); }} className="btn-secondary text-xs flex items-center gap-1"><Edit3 className="h-3 w-3" />编辑</button>}
+            <button onClick={() => { setEditingOfficial(true); setOfficialAuth(status?.current_auth || ""); setOfficialConfig(status?.current_config || ""); }} className="btn-secondary text-xs flex items-center gap-1"><Edit3 className="h-3 w-3" />编辑</button>
           </div>
         </div>
-        {status && (
-          <div className="grid grid-cols-2 gap-3 text-sm mt-3 pt-3 border-t border-gray-100 dark:border-surface-700/60">
-            <div><span className="text-gray-400">当前 auth.json:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_auth?.slice(0, 40) || "(空)"}</span></div>
-            <div><span className="text-gray-400">当前 config.toml:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_config?.slice(0, 40) || "(空)"}</span></div>
+        {editingOfficial ? (
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">auth.json</label>
+              <textarea value={officialAuth} onChange={e => setOfficialAuth(e.target.value)}
+                className="input-field font-mono text-xs h-20 resize-none" placeholder='{"api_key": "sk-..."}' />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">config.toml</label>
+              <textarea value={officialConfig} onChange={e => setOfficialConfig(e.target.value)}
+                className="input-field font-mono text-xs h-40 resize-none" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setEditingOfficial(false)} className="btn-secondary text-sm">取消</button>
+              <button onClick={async () => {
+                try { await writeCodexFiles(officialAuth, officialConfig); setEditingOfficial(false); await refresh(); showMsg("ok", "已保存"); }
+                catch (e: any) { showMsg("err", e.toString()); }
+              }} className="btn-primary text-sm flex items-center gap-1"><Save className="h-3.5 w-3.5" />保存</button>
+            </div>
           </div>
+        ) : (
+          status && (
+            <div className="grid grid-cols-2 gap-3 text-sm mt-3 pt-3 border-t border-gray-100 dark:border-surface-700/60">
+              <div><span className="text-gray-400">auth.json:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_auth?.slice(0, 60) || "(空)"}</span></div>
+              <div><span className="text-gray-400">config.toml:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_config?.slice(0, 60) || "(空)"}</span></div>
+            </div>
+          )
         )}
       </div>
       <div>

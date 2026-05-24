@@ -354,3 +354,7 @@ export async function updateCodexProfile(
 export async function testCodexProfile(id: string): Promise<string> {
   return invoke<string>("test_codex_profile", { id });
 }
+
+export async function writeCodexFiles(authJson: string, configToml: string): Promise<void> {
+  return invoke<void>("write_codex_files", { authJson, configToml });
+}

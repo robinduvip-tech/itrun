@@ -88,3 +88,14 @@ pub async fn test_codex_profile(id: String) -> Result<String, String> {
         Err(e) => Err(format!("FAIL {}ms: {}", latency_ms, e)),
     }
 }
+
+#[command]
+pub async fn write_codex_files(auth_json: String, config_toml: String) -> Result<(), String> {
+    let dir = std::path::PathBuf::from(
+        std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).unwrap_or_else(|_| ".".to_string())
+    ).join(".codex");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {}", e))?;
+    std::fs::write(dir.join("auth.json"), auth_json).map_err(|e| format!("write auth: {}", e))?;
+    std::fs::write(dir.join("config.toml"), config_toml).map_err(|e| format!("write config: {}", e))?;
+    Ok(())
+}
