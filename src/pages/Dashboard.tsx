@@ -1,73 +1,57 @@
-import { Activity, Zap, Clock, Server } from "lucide-react";
-import StatsCard from "@/components/dashboard/StatsCard";
+import { Activity, Zap, Clock, Server as ServerIcon } from "lucide-react";
 import TokenChart from "@/components/dashboard/TokenChart";
 import LatencyChart from "@/components/dashboard/LatencyChart";
 import LiveRequests from "@/components/dashboard/LiveRequests";
 import { useStats } from "@/hooks/useStats";
+import { useProxyStore } from "@/stores/proxyStore";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
-  const { stats, dailyStats, providerLatencyStats, isLoading: statsLoading } = useStats();
+  const { stats, dailyStats, providerLatencyStats, isLoading } = useStats();
+  const isRunning = useProxyStore((s) => s.isRunning);
+  const port = useProxyStore((s) => s.port);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">控制台</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          AI API 中转代理运行状态与用量概览
-        </p>
+    <div className="flex h-full flex-col bg-white dark:bg-surface-950">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-gray-100 dark:border-surface-800/60 px-5">
+        <h1 className="text-sm font-semibold text-gray-800 dark:text-gray-200">iTrun</h1>
+        <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+          isRunning ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+            : "bg-gray-100 text-gray-500 dark:bg-surface-800 dark:text-gray-400")}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", isRunning ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
+          {isRunning ? `:${port}` : "已停止"}
+        </span>
       </div>
-
-      {/* Stats Cards Row */}
-      {statsLoading && !stats ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-28 animate-pulse rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl"
-            />
-          ))}
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="grid grid-cols-4 gap-3">
+          <MiniStat icon={<Activity className="h-4 w-4" />} label="请求数" value={stats ? String(stats.total_requests) : "-"} color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
+          <MiniStat icon={<Zap className="h-4 w-4" />} label="Token" value={stats ? `${(stats.total_tokens/1000).toFixed(0)}K` : "-"} color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" />
+          <MiniStat icon={<Clock className="h-4 w-4" />} label="延迟" value={stats ? `${stats.avg_latency_ms.toFixed(0)}ms` : "-"} color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" />
+          <MiniStat icon={<ServerIcon className="h-4 w-4" />} label="Provider" value={stats ? String(stats.by_provider.length) : "-"} color="text-sky-500" bg="bg-sky-50 dark:bg-sky-500/10" />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            title="总请求数"
-            value={stats ? stats.total_requests.toLocaleString() : "0"}
-            subtitle="所有时间"
-            icon={Activity}
-            color="indigo"
-          />
-          <StatsCard
-            title="Token 用量"
-            value={stats ? (stats.total_tokens / 1000).toFixed(0) + "K" : "0"}
-            subtitle="所有时间"
-            icon={Zap}
-            color="amber"
-          />
-          <StatsCard
-            title="平均延迟"
-            value={stats ? stats.avg_latency_ms.toFixed(0) + "ms" : "0ms"}
-            subtitle={`${stats ? stats.total_errors : 0} 个错误`}
-            icon={Clock}
-            color="emerald"
-          />
-          <StatsCard
-            title="活跃 Provider"
-            value={stats ? String(stats.by_provider.length) : "0"}
-            subtitle="已配置的供应商"
-            icon={Server}
-            color="sky"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-xl border border-gray-100 dark:border-surface-800/60 p-4">
+            <h3 className="mb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Token 用量趋势</h3>
+            <TokenChart data={dailyStats} isLoading={isLoading} />
+          </div>
+          <div className="rounded-xl border border-gray-100 dark:border-surface-800/60 p-4">
+            <h3 className="mb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">延迟分布</h3>
+            <LatencyChart data={providerLatencyStats} isLoading={isLoading} />
+          </div>
         </div>
-      )}
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TokenChart data={dailyStats} isLoading={statsLoading} />
-        <LatencyChart data={providerLatencyStats} isLoading={statsLoading} />
+        <div className="rounded-xl border border-gray-100 dark:border-surface-800/60">
+          <LiveRequests />
+        </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Live Requests */}
-      <LiveRequests />
+function MiniStat(props: { icon: React.ReactNode; label: string; value: string; color: string; bg: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-surface-800/60 p-3.5">
+      <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", props.bg, props.color)}>{props.icon}</div>
+      <div><p className="text-[11px] text-gray-400">{props.label}</p><p className="text-lg font-bold text-gray-900 dark:text-white">{props.value}</p></div>
     </div>
   );
 }

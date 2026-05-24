@@ -7,6 +7,8 @@ pub mod configs;
 
 use std::sync::Arc;
 use parking_lot::Mutex;
+use tauri::Manager;
+use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState};
 
 use db::init_db;
 use provider::registry::ProviderRegistry;
@@ -44,7 +46,6 @@ pub fn run() {
                     ProviderRegistry::register(&p.id, arc_provider);
                 }
             }
-            // Set default provider
             if let Ok(Some(default_id)) = db::config::get_default_provider(&conn) {
                 ProviderRegistry::set_default(&default_id);
             }
@@ -79,7 +80,36 @@ pub fn run() {
             commands::configs::read_config_file,
             commands::configs::write_config_file,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            // ── System Tray ──
+            let handle = app.handle();
+            let _tray = TrayIconBuilder::new()
+                .icon(handle.default_window_icon().unwrap().clone())
+                .tooltip("iTrun — AI 中转客户端")
+                .on_tray_icon_event(move |tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up, ..
+                    } = event
+                    {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // Intercept window close → hide to tray instead of quit
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        let _ = window_clone.hide();
+                    }
+                });
+            }
+
             tracing::info!("iTrun app setup complete");
             Ok(())
         })
