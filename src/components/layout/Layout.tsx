@@ -54,7 +54,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center gap-2 pl-3">
           <div className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-emerald-600">
-            <span className="text-[9px] font-bold text-white">iT</span>
+            <span className="text-[9px] font-bold text-white">Ti</span>
           </div>
           <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">iTrun</span>
         </div>
