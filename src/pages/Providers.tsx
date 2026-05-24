@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Server, Shield, Settings } from "lucide-react";
+import { Plus, Server, Shield, Trash2, Wifi, RefreshCw } from "lucide-react";
 import ProviderForm from "@/components/providers/ProviderForm";
 import { useProviderStore } from "@/stores/providerStore";
 import type { Provider, ProviderInput } from "@/lib/tauri";
@@ -26,13 +26,14 @@ export default function Providers() {
   const addProvider = useProviderStore((s) => s.addProvider);
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const testConnection = useProviderStore((s) => s.testConnection);
-  const testingId = useProviderStore((s) => s.testingId);
   const defaultProviderId = useProviderStore((s) => s.defaultProviderId);
   const removeProvider = useProviderStore((s) => s.removeProvider);
   const [selected, setSelected] = useState<Provider | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Provider | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, string>>({});
 
   useEffect(() => { loadProviders(); }, [loadProviders]);
 
@@ -42,6 +43,20 @@ export default function Providers() {
     if (isNew) await addProvider(data);
     else if (selected) await updateProvider(selected.id, data);
     setFormOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await removeProvider(deleteTarget.id);
+    setDeleteTarget(null);
+  };
+
+  const handleTest = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setTestingId(id);
+    try { const ok = await testConnection(id); setTestResults(prev => ({ ...prev, [id]: ok ? "OK" : "FAIL" })); }
+    catch { setTestResults(prev => ({ ...prev, [id]: "ERR" })); }
+    setTestingId(null);
   };
 
   return (
@@ -79,6 +94,19 @@ export default function Providers() {
                     <span className="text-[10px] text-gray-400">{p.models.length} 模型</span>
                   </div>
                 </div>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  {testResults[p.id] && <span className={cn("text-[10px] font-medium", testResults[p.id] === "OK" ? "text-emerald-500" : "text-red-500")}>{testResults[p.id]}</span>}
+                  <button onClick={(e) => handleTest(e, p.id)} disabled={testingId === p.id}
+                    className="p-1.5 text-gray-400 hover:text-emerald-500 rounded-lg hover:bg-emerald-50 transition-colors"
+                    title="测试连接">
+                    {testingId === p.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }}
+                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                    title="删除">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 {p.api_key && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />}
               </button>
             ))
@@ -106,7 +134,7 @@ export default function Providers() {
           <div className="relative rounded-2xl bg-white dark:bg-surface-900 p-6 shadow-2xl max-w-sm"><p className="font-semibold">删除 {deleteTarget.name}？</p>
             <p className="text-sm text-gray-500 mt-1 mb-4">此操作不可撤销</p>
             <div className="flex justify-end gap-2"><button onClick={() => setDeleteTarget(null)} className="btn-secondary text-sm">取消</button>
-              <button onClick={() => { removeProvider(deleteTarget.id); setDeleteTarget(null); }} className="btn-danger text-sm">删除</button></div></div>
+              <button onClick={handleDelete} className="btn-danger text-sm">删除</button></div></div>
         </div>
       )}
     </div>
