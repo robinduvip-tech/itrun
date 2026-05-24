@@ -22,12 +22,7 @@ pub async fn get_codex_status() -> Result<CodexStatus, String> {
 }
 
 #[command]
-pub async fn add_codex_profile(
-    name: String,
-    api_key: String,
-    base_url: String,
-    model: String,
-) -> Result<CodexStatus, String> {
+pub async fn add_codex_profile(name: String, api_key: String, base_url: String, model: String) -> Result<CodexStatus, String> {
     codex_switch::add_profile(&name, &api_key, &base_url, &model)?;
     Ok(codex_switch::get_status())
 }
@@ -57,9 +52,7 @@ pub async fn restore_codex_official() -> Result<CodexStatus, String> {
 }
 
 #[command]
-pub async fn update_codex_profile(
-    id: String, name: String, api_key: String, base_url: String, model: String,
-) -> Result<CodexStatus, String> {
+pub async fn update_codex_profile(id: String, name: String, api_key: String, base_url: String, model: String) -> Result<CodexStatus, String> {
     codex_switch::update_profile(&id, &name, &api_key, &base_url, &model)?;
     Ok(codex_switch::get_status())
 }
@@ -73,9 +66,9 @@ pub async fn test_codex_profile(id: String) -> Result<String, String> {
 
     let start = std::time::Instant::now();
     let client = reqwest::Client::new();
-    // Quick test: fetch /v1/models to check connectivity
+    let url = format!("{}/models", profile.base_url.trim_end_matches('/'));
     let result = client
-        .get(format!("{}/models", profile.base_url.trim_end_matches('/')))
+        .get(&url)
         .header("Authorization", format!("Bearer {}", profile.api_key))
         .timeout(std::time::Duration::from_secs(10))
         .send()
@@ -84,13 +77,14 @@ pub async fn test_codex_profile(id: String) -> Result<String, String> {
     let latency_ms = start.elapsed().as_millis();
     match result {
         Ok(resp) => {
-            if resp.status().is_success() {
-                Ok(format!("连接成功 — {}ms", latency_ms))
+            let is_ok = resp.status().is_success();
+            if is_ok {
+                Ok(format!("OK {}ms", latency_ms))
             } else {
-                let body = resp.text().await.unwrap_or_default();
-                Err(format!("HTTP {} — {}ms — {}", resp.status().as_u16(), latency_ms, body.chars().take(100).collect::<String>()))
+                let code = resp.status().as_u16();
+                Err(format!("HTTP {} — {}ms", code, latency_ms))
             }
         }
-        Err(e) => Err(format!("连接失败 — {}ms — {}", latency_ms, e)),
+        Err(e) => Err(format!("FAIL {}ms: {}", latency_ms, e)),
     }
 }
