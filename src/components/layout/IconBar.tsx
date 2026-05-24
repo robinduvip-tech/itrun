@@ -18,7 +18,7 @@ export default function IconBar() {
 
   return (
     <div className="flex h-full w-[68px] shrink-0 select-none flex-col items-center bg-gray-100 dark:bg-[#1a1a1f] py-3 gap-1">
-      <nav className="flex flex-1 flex-col items-center gap-1.5 mt-2">
+      <nav className="flex flex-1 flex-col items-center gap-1.5 pt-1">
         {navItems.map((item) => {
           const active = isActive(item.to);
           return (
