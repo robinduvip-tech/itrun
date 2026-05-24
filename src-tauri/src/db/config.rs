@@ -59,6 +59,9 @@ pub fn insert_provider(
     )
     .map_err(|e| format!("Failed to insert provider: {}", e))?;
 
+    // Force checkpoint after insert to ensure data persists
+    conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);").ok();
+
     Ok(())
 }
 
