@@ -37,7 +37,7 @@ function CodexTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("http://localhost:9876/v1");
+  const [baseUrl, setBaseUrl] = useState(`http://localhost:${proxyPort}/v1`);
   const [model, setModel] = useState("");
   const { proxyPort } = useSettingsStore();
   const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
@@ -66,6 +66,16 @@ function CodexTab() {
     if (!name.trim() || !apiKey.trim()) return;
     try { await addCodexProfile(name.trim(), apiKey.trim(), baseUrl.trim(), model.trim()); setShowAdd(false); setName(""); setApiKey(""); await refresh(); showMsg("ok", "ok"); }
     catch (e: any) { showMsg("err", e.toString()); }
+  };
+  const openAddForm = () => {
+    const n = (status?.profiles.length || 0) + 1;
+    setName(`方案${n}`);
+    setApiKey("");
+    setBaseUrl(`http://localhost:${proxyPort}/v1`);
+    setModel("");
+    setFetchedModels([]);
+    setShowModelList(false);
+    setShowAdd(true);
   };
 
   const handleSwitch = async (id: string) => {
