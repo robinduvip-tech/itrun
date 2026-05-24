@@ -299,3 +299,48 @@ export async function switchCodexMode(
 ): Promise<CodexConfigStatus> {
   return invoke<CodexConfigStatus>("switch_codex_mode", { mode, apiKey, baseUrl, model });
 }
+
+// ── Codex Profile Management ───────────────────────────────────
+
+export interface CodexProfile {
+  id: string;
+  name: string;
+  api_key: string;
+  base_url: string;
+  model: string;
+  created_at: string;
+}
+
+export interface CodexStatus {
+  profiles: CodexProfile[];
+  active_id: string | null;
+  backup_exists: boolean;
+  current_auth: string;
+  current_config: string;
+}
+
+export async function getCodexStatus(): Promise<CodexStatus> {
+  return invoke<CodexStatus>("get_codex_status");
+}
+
+export async function addCodexProfile(
+  name: string, apiKey: string, baseUrl: string, model: string
+): Promise<CodexStatus> {
+  return invoke<CodexStatus>("add_codex_profile", { name, apiKey, baseUrl, model });
+}
+
+export async function deleteCodexProfile(id: string): Promise<CodexStatus> {
+  return invoke<CodexStatus>("delete_codex_profile", { id });
+}
+
+export async function switchCodexProfile(id: string): Promise<CodexStatus> {
+  return invoke<CodexStatus>("switch_codex_profile", { id });
+}
+
+export async function backupCodexOfficial(): Promise<CodexStatus> {
+  return invoke<CodexStatus>("backup_codex_official");
+}
+
+export async function restoreCodexOfficial(): Promise<CodexStatus> {
+  return invoke<CodexStatus>("restore_codex_official");
+}

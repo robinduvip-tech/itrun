@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play, FolderOpen, FileText, RefreshCw, Search, Edit3, Download } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile, tryFetchModels } from "@/lib/tauri";
-import type { ConfigFile, ConfigKey, ModelInfo } from "@/lib/tauri";
+import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile, tryFetchModels, getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial } from "@/lib/tauri";
+import type { ConfigFile, ConfigKey, ModelInfo, CodexProfile, CodexStatus } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 // ── Default configurations ──────────────────────────────────────
@@ -384,6 +384,7 @@ export default function RelayConfig() {
       </ConfigCard>
 
       {/* ── Local Config Scanner ── */}
+      <CodexProfileManager />
       <ConfigScanner />
     </div>
   );
@@ -685,3 +686,146 @@ function FileModal({ title, onClose, children }: { title: string; onClose: () =>
     </div>
   );
 }
+
+// ── Codex Profile Manager ─────────────────────────────────────
+
+function CodexProfileManager() {
+  const [status, setStatus] = useState<CodexStatus | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newKey, setNewKey] = useState("");
+  const [newUrl, setNewUrl] = useState("https://api.openai.com/v1");
+  const [newModel, setNewModel] = useState("gpt-5");
+  const [msg, setMsg] = useState<{type:"ok"|"err",text:string}|null>(null);
+  const [switchingId, setSwitchingId] = useState<string|null>(null);
+
+  const refresh = async () => {
+    setLoading(true);
+    try { setStatus(await getCodexStatus()); } catch(e) {}
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    try {
+      await addCodexProfile(newName.trim(), newKey.trim(), newUrl.trim(), newModel.trim());
+      setShowAdd(false); setNewName(""); setNewKey("");
+      await refresh();
+      setMsg({type:"ok",text:"已添加"});
+    } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
+    setTimeout(()=>setMsg(null),2000);
+  };
+
+  const handleSwitch = async (id:string) => {
+    setSwitchingId(id);
+    try {
+      await switchCodexProfile(id);
+      await refresh();
+      setMsg({type:"ok",text:"已切换"});
+    } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
+    setSwitchingId(null);
+  };
+
+  const handleBackup = async () => {
+    try { await backupCodexOfficial(); await refresh(); setMsg({type:"ok",text:"已备份官方配置"}); } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
+    setTimeout(()=>setMsg(null),2000);
+  };
+
+  const handleRestore = async () => {
+    try { await restoreCodexOfficial(); await refresh(); setMsg({type:"ok",text:"已恢复官方配置"}); } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
+    setTimeout(()=>setMsg(null),2000);
+  };
+
+  const handleDelete = async (id:string) => {
+    try { await deleteCodexProfile(id); await refresh(); } catch(e:any) {}
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/60 backdrop-blur-xl border-l-4 border-l-indigo-500 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-surface-800/60">
+        <div className="flex items-center gap-3">
+          <Braces className="h-5 w-5 text-indigo-500" />
+          <div><h2 className="text-base font-semibold text-gray-900 dark:text-white">Codex 配置切换</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">管理 .codex/auth.json & config.toml，像 ccswitch 一样切换</p></div>
+        </div>
+      </div>
+
+      <div className="px-6 py-4 space-y-3">
+        {msg && <div className={cn("text-xs px-3 py-2 rounded-lg",msg.type==="ok"?"bg-emerald-50 text-emerald-700":"bg-red-50 text-red-600")}>{msg.text}</div>}
+
+        {/* Official backup row */}
+        <div className="flex items-center gap-2">
+          <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1">
+            <Save className="h-3 w-3" />备份当前为官方
+          </button>
+          <button onClick={handleRestore} disabled={!status?.backup_exists}
+            className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-40">
+            <RotateCcw className="h-3 w-3" />恢复官方
+          </button>
+          <span className="text-[10px] text-gray-400 ml-auto">
+            {status?.backup_exists ? '✅ 已备份' : '⚠️ 未备份'}
+          </span>
+        </div>
+
+        {/* Profile list */}
+        {status?.profiles.length === 0 ? (
+          <div className="text-center py-6 text-sm text-gray-400">暂无配置方案，点击下方添加</div>
+        ) : (
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {status?.profiles.map((p: CodexProfile) => (
+              <div key={p.id} className={cn("flex items-center justify-between rounded-lg px-3 py-2.5 border transition-colors",
+                status.active_id === p.id ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-500/10" : "border-gray-100 dark:border-surface-700 bg-gray-50 dark:bg-surface-800/30")}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{p.name}</span>
+                    {status.active_id === p.id && <span className="rounded bg-emerald-500 px-1.5 py-0 text-[9px] text-white font-medium">当前</span>}
+                  </div>
+                  <div className="flex gap-2 mt-0.5">
+                    <span className="text-[10px] text-gray-400 font-mono">{p.model}</span>
+                    <span className="text-[10px] text-gray-400 font-mono truncate">{p.base_url}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 ml-2 shrink-0">
+                  <button onClick={() => handleSwitch(p.id)} disabled={switchingId === p.id || status.active_id === p.id}
+                    className={cn("rounded-md px-2.5 py-1 text-[10px] font-medium transition-all",
+                      status.active_id === p.id ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                        : "bg-indigo-500 text-white hover:bg-indigo-600")}>
+                    {switchingId === p.id ? "..." : status.active_id === p.id ? "已激活" : "切换"}
+                  </button>
+                  <button onClick={() => handleDelete(p.id)}
+                    className="rounded-md px-1.5 py-1 text-[10px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add button / form */}
+        {!showAdd ? (
+          <button onClick={() => setShowAdd(true)} className="w-full rounded-lg border-2 border-dashed border-gray-200 dark:border-surface-700 py-2.5 text-xs text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors">
+            <Plus className="h-3.5 w-3.5 inline mr-1" />新增配置方案
+          </button>
+        ) : (
+          <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 space-y-3">
+            <input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="方案名称（如：公司中转）" className="input-field text-sm" />
+            <input type="password" value={newKey} onChange={e=>setNewKey(e.target.value)} placeholder="API Key" className="input-field text-sm" />
+            <input type="text" value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="Base URL" className="input-field text-sm" />
+            <input type="text" value={newModel} onChange={e=>setNewModel(e.target.value)} placeholder="模型名" className="input-field text-sm" />
+            <div className="flex gap-2">
+              <button onClick={() => setShowAdd(false)} className="btn-secondary text-xs flex-1">取消</button>
+              <button onClick={handleAdd} className="btn-primary text-xs flex-1">添加</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Plus({className}:{className?:string}){return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>}
+function X({className}:{className?:string}){return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>}

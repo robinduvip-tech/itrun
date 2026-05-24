@@ -1,163 +1,175 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Config mode for Codex
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum CodexMode {
-    /// Restore official/original config from backup
-    Official,
-    /// Apply custom relay settings
-    Custom,
-    /// Clean default config (official API)
-    Default,
-}
-
+/// A saved Codex configuration profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CodexConfigStatus {
-    pub mode: String,
-    pub auth_json_exists: bool,
-    pub config_toml_exists: bool,
-    pub backup_exists: bool,
-    pub auth_json_preview: String,
-    pub config_toml_preview: String,
+pub struct CodexProfile {
+    pub id: String,
+    pub name: String,
+    pub api_key: String,
+    pub base_url: String,
+    pub model: String,
+    pub created_at: String,
 }
 
-/// Get the codex config directory path
+/// All profiles storage
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CodexProfiles {
+    pub active: Option<String>,
+    pub profiles: Vec<CodexProfile>,
+    pub official_backup_exists: bool,
+}
+
 fn codex_dir() -> PathBuf {
     let home = std::env::var("USERPROFILE")
         .or_else(|_| std::env::var("HOME"))
         .unwrap_or_else(|_| ".".to_string());
     PathBuf::from(&home).join(".codex")
 }
-
+fn profiles_path() -> PathBuf { codex_dir().join("profiles.json") }
 fn auth_path() -> PathBuf { codex_dir().join("auth.json") }
 fn config_path() -> PathBuf { codex_dir().join("config.toml") }
-fn auth_backup_path() -> PathBuf { codex_dir().join("auth.json.backup") }
-fn config_backup_path() -> PathBuf { codex_dir().join("config.toml.backup") }
+fn auth_backup() -> PathBuf { codex_dir().join("auth.json.backup") }
+fn config_backup() -> PathBuf { codex_dir().join("config.toml.backup") }
 
-/// Read the current codex config status
-pub fn get_codex_status() -> CodexConfigStatus {
-    let dir = codex_dir();
-    let _ = std::fs::create_dir_all(&dir);
-
-    let auth_exists = auth_path().exists();
-    let config_exists = config_path().exists();
-    let backup_exists = auth_backup_path().exists();
-
-    let auth_preview = if auth_exists {
-        std::fs::read_to_string(auth_path()).unwrap_or_default()
+/// Load all profiles
+pub fn load_profiles() -> CodexProfiles {
+    let _ = std::fs::create_dir_all(codex_dir());
+    if let Ok(content) = std::fs::read_to_string(profiles_path()) {
+        serde_json::from_str(&content).unwrap_or_default()
     } else {
-        String::from("{}")
-    };
-
-    let config_preview = if config_exists {
-        std::fs::read_to_string(config_path()).unwrap_or_default()
-    } else {
-        String::new()
-    };
-
-    CodexConfigStatus {
-        mode: "unknown".to_string(),
-        auth_json_exists: auth_exists,
-        config_toml_exists: config_exists,
-        backup_exists,
-        auth_json_preview: auth_preview,
-        config_toml_preview: config_preview,
+        // Check if backup exists
+        let backup = auth_backup().exists();
+        let mut p = CodexProfiles::default();
+        p.official_backup_exists = backup;
+        p
     }
 }
 
-/// Create backup of current config files
-pub fn backup_codex_config() -> Result<(), String> {
-    let dir = codex_dir();
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Cannot create .codex dir: {}", e))?;
+/// Save profiles to disk
+fn save_profiles(profiles: &CodexProfiles) -> Result<(), String> {
+    let content = serde_json::to_string_pretty(profiles)
+        .map_err(|e| format!("Serialize error: {}", e))?;
+    std::fs::write(profiles_path(), content)
+        .map_err(|e| format!("Write error: {}", e))
+}
 
+/// Add a new profile (does NOT save to codex dir yet, just saves to profiles.json)
+pub fn add_profile(name: &str, api_key: &str, base_url: &str, model: &str) -> Result<CodexProfiles, String> {
+    let mut profiles = load_profiles();
+    let id = uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("unknown").to_string();
+
+    profiles.profiles.push(CodexProfile {
+        id,
+        name: name.to_string(),
+        api_key: api_key.to_string(),
+        base_url: base_url.to_string(),
+        model: model.to_string(),
+        created_at: chrono::Utc::now().to_rfc3339(),
+    });
+
+    save_profiles(&profiles)?;
+    Ok(profiles)
+}
+
+/// Delete a profile
+pub fn delete_profile(id: &str) -> Result<CodexProfiles, String> {
+    let mut profiles = load_profiles();
+    profiles.profiles.retain(|p| p.id != id);
+    if profiles.active.as_deref() == Some(id) {
+        profiles.active = None;
+    }
+    save_profiles(&profiles)?;
+    Ok(profiles)
+}
+
+/// Backup current official config (called once before any custom switch)
+pub fn backup_official() -> Result<(), String> {
+    std::fs::create_dir_all(codex_dir()).ok();
     if auth_path().exists() {
-        std::fs::copy(auth_path(), auth_backup_path())
-            .map_err(|e| format!("Cannot backup auth.json: {}", e))?;
+        std::fs::copy(auth_path(), auth_backup())
+            .map_err(|e| format!("Backup auth.json: {}", e))?;
     }
     if config_path().exists() {
-        std::fs::copy(config_path(), config_backup_path())
-            .map_err(|e| format!("Cannot backup config.toml: {}", e))?;
+        std::fs::copy(config_path(), config_backup())
+            .map_err(|e| format!("Backup config.toml: {}", e))?;
     }
+    let mut profiles = load_profiles();
+    profiles.official_backup_exists = true;
+    save_profiles(&profiles)?;
     Ok(())
 }
 
-/// Restore from backup (official mode)
-pub fn restore_official() -> Result<(), String> {
-    if auth_backup_path().exists() {
-        std::fs::copy(auth_backup_path(), auth_path())
-            .map_err(|e| format!("Cannot restore auth.json: {}", e))?;
+/// Apply a profile to the actual .codex/ files
+pub fn switch_to_profile(id: &str) -> Result<CodexProfiles, String> {
+    let mut profiles = load_profiles();
+
+    // Find the profile
+    let profile = profiles.profiles.iter()
+        .find(|p| p.id == id)
+        .cloned()
+        .ok_or_else(|| format!("Profile not found: {}", id))?;
+
+    // Backup official first if not done
+    if !profiles.official_backup_exists && auth_path().exists() {
+        backup_official()?;
+        profiles = load_profiles(); // reload after backup
     }
-    if config_backup_path().exists() {
-        std::fs::copy(config_backup_path(), config_path())
-            .map_err(|e| format!("Cannot restore config.toml: {}", e))?;
-    }
-    Ok(())
-}
 
-/// Apply custom relay settings to codex config
-pub fn apply_custom(api_key: &str, base_url: &str, model: &str) -> Result<(), String> {
-    let dir = codex_dir();
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Cannot create .codex dir: {}", e))?;
+    // Write auth.json
+    let auth = serde_json::json!({ "api_key": &profile.api_key });
+    std::fs::write(auth_path(), serde_json::to_string_pretty(&auth).unwrap_or_default())
+        .map_err(|e| format!("Write auth.json: {}", e))?;
 
-    // Write custom auth.json
-    let auth = serde_json::json!({
-        "api_key": api_key,
-    });
-    let auth_str = serde_json::to_string_pretty(&auth)
-        .map_err(|e| format!("Cannot serialize auth.json: {}", e))?;
-    std::fs::write(auth_path(), auth_str)
-        .map_err(|e| format!("Cannot write auth.json: {}", e))?;
-
-    // Write custom config.toml
-    let config_content = format!(
-        "# iTrun custom relay config\n\
-         base_url = \"{}\"\n\
-         model = \"{}\"\n\
-         # Managed by iTrun — do not edit manually\n",
-        base_url, model
+    // Write config.toml
+    let config = format!(
+        "# iTrun profile: {}\nbase_url = \"{}\"\nmodel = \"{}\"\n",
+        profile.name, profile.base_url, profile.model
     );
-    std::fs::write(config_path(), config_content)
-        .map_err(|e| format!("Cannot write config.toml: {}", e))?;
+    std::fs::write(config_path(), config)
+        .map_err(|e| format!("Write config.toml: {}", e))?;
 
-    Ok(())
+    profiles.active = Some(id.to_string());
+    save_profiles(&profiles)?;
+    Ok(profiles)
 }
 
-/// Apply default (official Codex) config
-pub fn apply_default() -> Result<(), String> {
-    let dir = codex_dir();
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Cannot create .codex dir: {}", e))?;
-
-    // Default auth.json — user needs to set their own key
-    let auth = serde_json::json!({
-        "api_key": "",
-    });
-    let auth_str = serde_json::to_string_pretty(&auth)
-        .map_err(|e| format!("Cannot serialize auth.json: {}", e))?;
-    std::fs::write(auth_path(), auth_str)
-        .map_err(|e| format!("Cannot write auth.json: {}", e))?;
-
-    // Default config.toml — no base_url override (uses official)
-    let config_content = "# Default Codex config — using official OpenAI API\n# Set your API key via: codex auth\n";
-    std::fs::write(config_path(), config_content)
-        .map_err(|e| format!("Cannot write config.toml: {}", e))?;
-
-    Ok(())
+/// Restore official backup
+pub fn restore_official() -> Result<CodexProfiles, String> {
+    let mut profiles = load_profiles();
+    if auth_backup().exists() {
+        std::fs::copy(auth_backup(), auth_path())
+            .map_err(|e| format!("Restore auth.json: {}", e))?;
+    }
+    if config_backup().exists() {
+        std::fs::copy(config_backup(), config_path())
+            .map_err(|e| format!("Restore config.toml: {}", e))?;
+    }
+    profiles.active = None;
+    save_profiles(&profiles)?;
+    Ok(profiles)
 }
 
-/// Switch to a specific mode. Creates backup first if none exists.
-pub fn switch_mode(mode: &str, api_key: &str, base_url: &str, model: &str) -> Result<CodexConfigStatus, String> {
-    // Always create backup on first switch
-    if !auth_backup_path().exists() && auth_path().exists() {
-        backup_codex_config()?;
-    }
+/// Get current status
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodexStatus {
+    pub profiles: Vec<CodexProfile>,
+    pub active_id: Option<String>,
+    pub backup_exists: bool,
+    pub current_auth: String,
+    pub current_config: String,
+}
 
-    match mode {
-        "default" => apply_default()?,
-        "custom" => apply_custom(api_key, base_url, model)?,
-        "official" => restore_official()?,
-        _ => return Err(format!("Unknown mode: {}", mode)),
-    }
+pub fn get_status() -> CodexStatus {
+    let profiles = load_profiles();
+    let current_auth = std::fs::read_to_string(auth_path()).unwrap_or_default();
+    let current_config = std::fs::read_to_string(config_path()).unwrap_or_default();
 
-    Ok(get_codex_status())
+    CodexStatus {
+        profiles: profiles.profiles.clone(),
+        active_id: profiles.active.clone(),
+        backup_exists: profiles.official_backup_exists,
+        current_auth,
+        current_config,
+    }
 }
