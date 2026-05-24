@@ -34,12 +34,12 @@ export default function RelayConfig() {
 function CodexTab() {
   const [status, setStatus] = useState<CodexStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const { proxyPort } = useSettingsStore();
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState(`http://localhost:${proxyPort}/v1`);
   const [model, setModel] = useState("");
-  const { proxyPort } = useSettingsStore();
   const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
