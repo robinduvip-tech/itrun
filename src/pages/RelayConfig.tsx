@@ -1,825 +1,126 @@
-import { useState, useEffect, useCallback } from "react";
-import { Save, RotateCcw, Eye, EyeOff, Copy, Check, Server, Braces, Zap, AlertTriangle, Play, FolderOpen, FileText, RefreshCw, Search, Edit3, Download } from "lucide-react";
-import { useSettingsStore } from "@/stores/settingsStore";
-import { setSetting, getSettings, scanConfigs, readConfigFile, writeConfigFile, tryFetchModels, getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial } from "@/lib/tauri";
-import type { ConfigFile, ConfigKey, ModelInfo, CodexProfile, CodexStatus } from "@/lib/tauri";
+import { useState, useEffect } from "react";
+import { Plus, Braces, Zap, Check, X, Save, RotateCcw, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCodexStatus, addCodexProfile, deleteCodexProfile, switchCodexProfile, backupCodexOfficial, restoreCodexOfficial, setSetting } from "@/lib/tauri";
+import type { CodexProfile, CodexStatus } from "@/lib/tauri";
+import { useSettingsStore } from "@/stores/settingsStore";
 
-// ── Default configurations ──────────────────────────────────────
-
-const CODECX_DEFAULTS: Record<string, string> = {
-  codex_model: "gpt-5",
-  codex_max_tokens: "4096",
-  codex_temperature: "0.7",
-  codex_streaming: "true",
-  codex_base_url: "https://api.openai.com/v1",
-};
-
-const CLAUDE_DEFAULTS: Record<string, string> = {
-  claude_model: "claude-opus-4-7-20250514",
-  claude_max_tokens: "8192",
-  claude_thinking_budget: "16000",
-  claude_base_url: "https://api.anthropic.com/v1",
-};
-
-// ── Copy to clipboard helper ────────────────────────────────────
-
-function copyJson(obj: Record<string, string>) {
-  const text = JSON.stringify(obj, null, 2);
-  navigator.clipboard.writeText(text);
-}
-
-// ── Main Page ───────────────────────────────────────────────────
+type Tab = "codex" | "claude";
 
 export default function RelayConfig() {
-  const { settings, loadSettings } = useSettingsStore();
-  const [codexConfig, setCodexConfig] = useState<Record<string, string>>({});
-  const [claudeConfig, setClaudeConfig] = useState<Record<string, string>>({});
-  const [editingCodex, setEditingCodex] = useState(false);
-  const [editingClaude, setEditingClaude] = useState(false);
-  const [showCodexKey, setShowCodexKey] = useState(false);
-  const [showClaudeKey, setShowClaudeKey] = useState(false);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Load current config from store
-  useEffect(() => {
-    const c: Record<string, string> = {};
-    for (const k of Object.keys(CODECX_DEFAULTS)) {
-      c[k] = settings[k] || CODECX_DEFAULTS[k];
-    }
-    if (settings.codex_api_key) c["codex_api_key"] = settings.codex_api_key;
-    setCodexConfig(c);
-
-    const cl: Record<string, string> = {};
-    for (const k of Object.keys(CLAUDE_DEFAULTS)) {
-      cl[k] = settings[k] || CLAUDE_DEFAULTS[k];
-    }
-    if (settings.claude_api_key) cl["claude_api_key"] = settings.claude_api_key;
-    setClaudeConfig(cl);
-  }, [settings]);
-
-  const updateCodex = (key: string, value: string) => {
-    setCodexConfig((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const updateClaude = (key: string, value: string) => {
-    setClaudeConfig((prev) => ({ ...prev, [key]: value }));
-  };
-
-  // Save config
-  const saveConfig = async (prefix: string, config: Record<string, string>) => {
-    setSaving(prefix);
-    try {
-      for (const [k, v] of Object.entries(config)) {
-        await setSetting(k, v);
-      }
-      await loadSettings();
-      setMsg({ type: "ok", text: `${prefix === "codex" ? "Codex" : "Claude"} 配置已保存` });
-      setTimeout(() => setMsg(null), 3000);
-    } catch {
-      setMsg({ type: "err", text: "保存失败" });
-    }
-    setSaving(null);
-  };
-
-  // Reset to defaults
-  const resetConfig = (prefix: string, defaults: Record<string, string>) => {
-    if (prefix === "codex") {
-      const reset = { ...defaults };
-      if (codexConfig.codex_api_key) reset["codex_api_key"] = codexConfig.codex_api_key;
-      setCodexConfig(reset);
-    } else {
-      const reset = { ...defaults };
-      if (claudeConfig.claude_api_key) reset["claude_api_key"] = claudeConfig.claude_api_key;
-      setClaudeConfig(reset);
-    }
-    setMsg({ type: "ok", text: `已恢复${prefix === "codex" ? "Codex" : "Claude"}默认配置（未保存）` });
-    setTimeout(() => setMsg(null), 3000);
-  };
-
-  // One-click apply (save defaults if no custom config)
-  const oneClickApply = async (prefix: string, config: Record<string, string>) => {
-    setSaving(prefix + "-quick");
-    try {
-      for (const [k, v] of Object.entries(config)) {
-        await setSetting(k, v);
-      }
-      await loadSettings();
-      setMsg({ type: "ok", text: `${prefix === "codex" ? "Codex" : "Claude"} 一键应用完成` });
-      setTimeout(() => setMsg(null), 3000);
-    } catch {
-      setMsg({ type: "err", text: "应用失败" });
-    }
-    setSaving(null);
-  };
-
-  const copyConfig = (label: string, config: Record<string, string>) => {
-    copyJson(config);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  // ── Model fetching ──
-  const [fetchingModels, setFetchingModels] = useState<string | null>(null);
-  const [fetchedModelList, setFetchedModelList] = useState<ModelInfo[]>([]);
-  const [showModelDropdown, setShowModelDropdown] = useState<string | null>(null);
-
-  const handleFetchModels = async (prefix: string) => {
-    const config = prefix === "codex" ? codexConfig : claudeConfig;
-    const apiKey = config[`${prefix}_api_key`] || "";
-    const baseUrl = config[`${prefix}_base_url`] || "";
-    if (!apiKey) {
-      setMsg({ type: "err", text: "请先填写 API 密钥" });
-      setTimeout(() => setMsg(null), 2500);
-      return;
-    }
-    setFetchingModels(prefix);
-    try {
-      const models = await tryFetchModels(prefix === "codex" ? "openai" : "anthropic", apiKey, baseUrl);
-      setFetchedModelList(models);
-      setShowModelDropdown(prefix);
-    } catch (err) {
-      setMsg({ type: "err", text: `获取失败: ${err}` });
-      setTimeout(() => setMsg(null), 2500);
-    }
-    setFetchingModels(null);
-  };
-
-  const selectModel = (prefix: string, modelId: string) => {
-    if (prefix === "codex") {
-      updateCodex("codex_model", modelId);
-    } else {
-      updateClaude("claude_model", modelId);
-    }
-    setShowModelDropdown(null);
-  };
+  const [tab, setTab] = useState<Tab>("codex");
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
-          <Server className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">中转配置</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">管理 Codex 和 Claude 客户端中转参数</p>
-        </div>
-      </div>
-
-      {/* Message */}
-      {msg && (
-        <div className={cn(
-          "flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium",
-          msg.type === "ok" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-            : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-        )}>
-          {msg.type === "ok" ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-          {msg.text}
-        </div>
-      )}
-
-      {/* ── Codex Configuration ── */}
-      <ConfigCard
-        icon={<Braces className="h-5 w-5" />}
-        title="OpenAI Codex 客户端配置"
-        subtitle="VS Code / Cursor 中 Codex 补全的中转参数"
-        accent="indigo"
-        isEditing={editingCodex}
-        onToggleEdit={() => setEditingCodex(!editingCodex)}
-        onSave={() => saveConfig("codex", codexConfig)}
-        onReset={() => resetConfig("codex", CODECX_DEFAULTS)}
-        onQuickApply={() => oneClickApply("codex", codexConfig)}
-        onCopy={() => copyConfig("codex", codexConfig)}
-        copied={copied === "codex"}
-        saving={saving?.startsWith("codex") || false}
-      >
-        <div className="space-y-4">
-          <Field label="API 密钥" icon={<KeyIcon />}>
-            <div className="relative w-full max-w-sm">
-              <input type={showCodexKey ? "text" : "password"}
-                value={codexConfig.codex_api_key || ""}
-                onChange={(e) => updateCodex("codex_api_key", e.target.value)}
-                disabled={!editingCodex}
-                placeholder="sk-..."
-                className={cn("input-field pr-10 text-sm font-mono", !editingCodex && "opacity-60")} />
-              <button onClick={() => setShowCodexKey(!showCodexKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                {showCodexKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </Field>
-          <Field label="模型">
-            <div className="relative">
-              <div className="flex gap-2">
-                <input type="text" value={codexConfig.codex_model || ""}
-                  onChange={(e) => updateCodex("codex_model", e.target.value)}
-                  disabled={!editingCodex}
-                  className={cn("input-field flex-1 text-sm font-mono", !editingCodex && "opacity-60")} />
-                <button type="button" onClick={() => handleFetchModels("codex")}
-                  disabled={!editingCodex || fetchingModels === "codex"}
-                  className="flex items-center gap-1 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 shrink-0">
-                  {fetchingModels === "codex" ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                  获取模型
-                </button>
-              </div>
-              {showModelDropdown === "codex" && fetchedModelList.length > 0 && (
-                <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">
-                  {fetchedModelList.map((m) => (
-                    <button key={m.id} onClick={() => selectModel("codex", m.id)}
-                      className={cn("flex w-full items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-500/10",
-                        codexConfig.codex_model === m.id ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300")}>
-                      <span className="truncate font-mono">{m.id}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Max Tokens">
-              <select value={codexConfig.codex_max_tokens || "4096"}
-                onChange={(e) => updateCodex("codex_max_tokens", e.target.value)}
-                disabled={!editingCodex}
-                className={cn("input-field w-full text-sm", !editingCodex && "opacity-60")}>
-                {["1024","2048","4096","8192","16384"].map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </Field>
-            <Field label="Temperature">
-              <select value={codexConfig.codex_temperature || "0.7"}
-                onChange={(e) => updateCodex("codex_temperature", e.target.value)}
-                disabled={!editingCodex}
-                className={cn("input-field w-full text-sm", !editingCodex && "opacity-60")}>
-                {["0","0.3","0.7","1.0"].map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </Field>
-            <Field label="流式传输">
-              <Toggle value={codexConfig.codex_streaming === "true"}
-                onChange={(v) => updateCodex("codex_streaming", String(v))}
-                disabled={!editingCodex} />
-            </Field>
-          </div>
-          <Field label="Base URL">
-            <input type="text" value={codexConfig.codex_base_url || ""}
-              onChange={(e) => updateCodex("codex_base_url", e.target.value)}
-              disabled={!editingCodex}
-              className={cn("input-field w-full max-w-md text-sm font-mono", !editingCodex && "opacity-60")} />
-          </Field>
-          {/* Current effective config display */}
-          {!editingCodex && (
-            <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-500/5 p-4">
-              <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-2">当前生效配置</p>
-              <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono overflow-x-auto">
-{JSON.stringify({
-  model: codexConfig.codex_model || CODECX_DEFAULTS.codex_model,
-  max_tokens: parseInt(codexConfig.codex_max_tokens || CODECX_DEFAULTS.codex_max_tokens),
-  temperature: parseFloat(codexConfig.codex_temperature || CODECX_DEFAULTS.codex_temperature),
-  stream: codexConfig.codex_streaming !== "false",
-  base_url: codexConfig.codex_base_url || CODECX_DEFAULTS.codex_base_url,
-}, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      </ConfigCard>
-
-      {/* ── Claude Configuration ── */}
-      <ConfigCard
-        icon={<Zap className="h-5 w-5" />}
-        title="Anthropic Claude 客户端配置"
-        subtitle="Claude 中转参数配置"
-        accent="amber"
-        isEditing={editingClaude}
-        onToggleEdit={() => setEditingClaude(!editingClaude)}
-        onSave={() => saveConfig("claude", claudeConfig)}
-        onReset={() => resetConfig("claude", CLAUDE_DEFAULTS)}
-        onQuickApply={() => oneClickApply("claude", claudeConfig)}
-        onCopy={() => copyConfig("claude", claudeConfig)}
-        copied={copied === "claude"}
-        saving={saving?.startsWith("claude") || false}
-      >
-        <div className="space-y-4">
-          <Field label="API 密钥" icon={<KeyIcon />}>
-            <div className="relative w-full max-w-sm">
-              <input type={showClaudeKey ? "text" : "password"}
-                value={claudeConfig.claude_api_key || ""}
-                onChange={(e) => updateClaude("claude_api_key", e.target.value)}
-                disabled={!editingClaude}
-                placeholder="sk-ant-..."
-                className={cn("input-field pr-10 text-sm font-mono", !editingClaude && "opacity-60")} />
-              <button onClick={() => setShowClaudeKey(!showClaudeKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                {showClaudeKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </Field>
-          <Field label="模型">
-            <div className="relative">
-              <div className="flex gap-2">
-                <input type="text" value={claudeConfig.claude_model || ""}
-                  onChange={(e) => updateClaude("claude_model", e.target.value)}
-                  disabled={!editingClaude}
-                  className={cn("input-field flex-1 text-sm font-mono", !editingClaude && "opacity-60")} />
-                <button type="button" onClick={() => handleFetchModels("claude")}
-                  disabled={!editingClaude || fetchingModels === "claude"}
-                  className="flex items-center gap-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs font-medium transition-all disabled:opacity-50 shrink-0">
-                  {fetchingModels === "claude" ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                  获取模型
-                </button>
-              </div>
-              {showModelDropdown === "claude" && fetchedModelList.length > 0 && (
-                <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 dark:border-surface-700 bg-white dark:bg-surface-900 shadow-2xl max-h-48 overflow-y-auto">
-                  {fetchedModelList.map((m) => (
-                    <button key={m.id} onClick={() => selectModel("claude", m.id)}
-                      className={cn("flex w-full items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-amber-50 dark:hover:bg-amber-500/10",
-                        claudeConfig.claude_model === m.id ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "text-gray-700 dark:text-gray-300")}>
-                      <span className="truncate font-mono">{m.id}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Max Tokens">
-              <select value={claudeConfig.claude_max_tokens || "8192"}
-                onChange={(e) => updateClaude("claude_max_tokens", e.target.value)}
-                disabled={!editingClaude}
-                className={cn("input-field w-full text-sm", !editingClaude && "opacity-60")}>
-                {["4096","8192","16384","32768"].map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </Field>
-            <Field label="Thinking Budget">
-              <select value={claudeConfig.claude_thinking_budget || "16000"}
-                onChange={(e) => updateClaude("claude_thinking_budget", e.target.value)}
-                disabled={!editingClaude}
-                className={cn("input-field w-full text-sm", !editingClaude && "opacity-60")}>
-                {["0","4000","8000","16000","32000"].map(v => <option key={v} value={v}>{v === "0" ? "关闭" : v}</option>)}
-              </select>
-            </Field>
-          </div>
-          <Field label="Base URL">
-            <input type="text" value={claudeConfig.claude_base_url || ""}
-              onChange={(e) => updateClaude("claude_base_url", e.target.value)}
-              disabled={!editingClaude}
-              className={cn("input-field w-full max-w-md text-sm font-mono", !editingClaude && "opacity-60")} />
-          </Field>
-          {/* Current effective config display */}
-          {!editingClaude && (
-            <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5 p-4">
-              <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-2">当前生效配置</p>
-              <pre className="text-xs text-gray-600 dark:text-gray-400 font-mono overflow-x-auto">
-{JSON.stringify({
-  model: claudeConfig.claude_model || CLAUDE_DEFAULTS.claude_model,
-  max_tokens: parseInt(claudeConfig.claude_max_tokens || CLAUDE_DEFAULTS.claude_max_tokens),
-  thinking_budget: parseInt(claudeConfig.claude_thinking_budget || CLAUDE_DEFAULTS.claude_thinking_budget),
-  base_url: claudeConfig.claude_base_url || CLAUDE_DEFAULTS.claude_base_url,
-}, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      </ConfigCard>
-
-      {/* ── Local Config Scanner ── */}
-      <CodexProfileManager />
-      <ConfigScanner />
-    </div>
-  );
-}
-
-// ── Reusable Components ─────────────────────────────────────────
-
-function ConfigCard({ icon, title, subtitle, accent, isEditing, onToggleEdit, onSave, onReset, onQuickApply, onCopy, copied, saving, children }: {
-  icon: React.ReactNode; title: string; subtitle: string; accent: string;
-  isEditing: boolean; onToggleEdit: () => void; onSave: () => void; onReset: () => void;
-  onQuickApply: () => void; onCopy: () => void; copied: boolean; saving: boolean; children: React.ReactNode;
-}) {
-  const borderColor = accent === "indigo" ? "border-l-indigo-500" : "border-l-amber-500";
-  const btnColor = accent === "indigo"
-    ? "bg-indigo-500 hover:bg-indigo-600 text-white"
-    : "bg-amber-500 hover:bg-amber-600 text-white";
-  const ringColor = accent === "indigo" ? "ring-indigo-500/20" : "ring-amber-500/20";
-
-  return (
-    <div className={cn(
-      "rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/60 backdrop-blur-xl border-l-4 overflow-hidden",
-      borderColor
-    )}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-surface-800/60">
-        <div className="flex items-center gap-3">
-          <span className={cn("text-gray-700 dark:text-gray-300", accent === "indigo" ? "text-indigo-600 dark:text-indigo-400" : "text-amber-600 dark:text-amber-400")}>{icon}</span>
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={onCopy}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-surface-700 transition-colors">
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? "已复制" : "复制配置"}
-          </button>
-          <button onClick={onReset}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-surface-700 transition-colors">
-            <RotateCcw className="h-3.5 w-3.5" />恢复默认
-          </button>
-          <button onClick={onQuickApply}
-            disabled={saving}
-            className={cn("flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-all disabled:opacity-50", btnColor)}>
-            <Play className="h-3.5 w-3.5" />一键应用
-          </button>
-          <button onClick={isEditing ? onSave : onToggleEdit}
-            disabled={saving}
-            className={cn(
-              "flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50",
-              isEditing ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "bg-gray-100 dark:bg-surface-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-surface-600"
-            )}>
-            {isEditing ? <><Save className="h-3.5 w-3.5" />保存</> : "编辑"}
-          </button>
-        </div>
-      </div>
-      {/* Body */}
-      <div className="px-6 py-5">{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
-        {icon}{label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <button type="button" onClick={() => !disabled && onChange(!value)}
-      className={cn(
-        "relative h-6 w-11 rounded-full transition-colors duration-200",
-        disabled && "opacity-50 cursor-not-allowed",
-        value ? "bg-indigo-500" : "bg-gray-300 dark:bg-gray-700"
-      )}>
-      <span className={cn("absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200", value && "translate-x-5")} />
-    </button>
-  );
-}
-
-function KeyIcon() {
-  return (
-    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-    </svg>
-  );
-}
-
-// ── Local Config Scanner ──────────────────────────────────────
-
-function ConfigScanner() {
-  const [configs, setConfigs] = useState<ConfigFile[]>([]);
-  const [scanning, setScanning] = useState(false);
-  const [viewingFile, setViewingFile] = useState<ConfigFile | null>(null);
-  const [editingFile, setEditingFile] = useState<ConfigFile | null>(null);
-  const [editContent, setEditContent] = useState("");
-  const [savingFile, setSavingFile] = useState(false);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  const handleScan = async () => {
-    setScanning(true);
-    try {
-      const result = await scanConfigs();
-      setConfigs(result);
-    } catch { /* ignore */ }
-    setScanning(false);
-  };
-
-  const handleView = async (cfg: ConfigFile) => {
-    try {
-      const detail = await readConfigFile(cfg.path);
-      setViewingFile(detail);
-      setEditingFile(null);
-    } catch (err) {
-      setMsg({ type: "err", text: `读取失败: ${err}` });
-    }
-  };
-
-  const handleEdit = async (cfg: ConfigFile) => {
-    try {
-      const detail = await readConfigFile(cfg.path);
-      setEditingFile(detail);
-      setEditContent(detail.content || "");
-      setViewingFile(null);
-    } catch (err) {
-      setMsg({ type: "err", text: `读取失败: ${err}` });
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingFile) return;
-    setSavingFile(true);
-    try {
-      await writeConfigFile(editingFile.path, editContent);
-      setMsg({ type: "ok", text: "已保存" });
-      setEditingFile(null);
-      // Refresh scan
-      handleScan();
-    } catch (err) {
-      setMsg({ type: "err", text: `保存失败: ${err}` });
-    }
-    setSavingFile(false);
-  };
-
-  const categoryLabel: Record<string, string> = {
-    claude: "Claude Code",
-    claude_desktop: "Claude Desktop",
-    codex: "Codex CLI",
-    vscode: "VS Code",
-    cursor: "Cursor",
-    gemini: "Gemini CLI",
-  };
-
-  const categoryColor: Record<string, string> = {
-    claude: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-    claude_desktop: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
-    codex: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400",
-    vscode: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
-    cursor: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400",
-    gemini: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
-  };
-
-  return (
-    <div className="rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/60 backdrop-blur-xl border-l-4 border-l-emerald-500 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-surface-800/60">
-        <div className="flex items-center gap-3">
-          <FolderOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">本地配置扫描</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">检测并管理 Claude Code / Codex / Cursor 等本地配置文件</p>
-          </div>
-        </div>
-        <button onClick={handleScan} disabled={scanning}
-          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50">
-          {scanning ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-          {scanning ? "扫描中..." : "扫描配置"}
+    <div className="flex h-full flex-col bg-white dark:bg-surface-950">
+      <div className="flex h-14 shrink-0 items-center border-b border-gray-100 dark:border-surface-800/60 px-5 gap-1">
+        <button onClick={() => setTab("codex")}
+          className={cn("relative px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            tab === "codex" ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10" : "text-gray-500 hover:text-gray-700")}>
+          <Braces className="h-4 w-4 inline mr-1.5" />Codex
+        </button>
+        <button onClick={() => setTab("claude")}
+          className={cn("relative px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            tab === "claude" ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10" : "text-gray-500 hover:text-gray-700")}>
+          <Zap className="h-4 w-4 inline mr-1.5" />Claude
         </button>
       </div>
-
-      {/* Message */}
-      {msg && (
-        <div className={cn("mx-6 mt-4 flex items-center gap-2 rounded-lg px-3 py-2 text-xs",
-          msg.type === "ok" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-            : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400")}>
-          {msg.type === "ok" ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-          {msg.text}
-          <button onClick={() => setMsg(null)} className="ml-auto text-xs underline">关闭</button>
-        </div>
-      )}
-
-      {/* Config list */}
-      <div className="px-6 py-4">
-        {configs.length === 0 && !scanning ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Search className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">点击「扫描配置」检测本地配置文件</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">支持 Claude Code、Codex CLI、Cursor、VS Code 等</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {configs.map((cfg) => (
-              <div key={cfg.path}
-                className={cn("flex items-center justify-between rounded-lg px-3 py-2 transition-colors",
-                  cfg.exists ? "hover:bg-gray-50 dark:hover:bg-surface-800/50" : "opacity-50")}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                    cfg.exists ? "bg-gray-100 dark:bg-surface-700" : "bg-gray-50 dark:bg-surface-800"
-                  )}>
-                    <FileText className={cn("h-3.5 w-3.5", cfg.exists ? "text-gray-500" : "text-gray-300 dark:text-gray-600")} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-900 dark:text-white truncate">{cfg.name}</p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono truncate">{cfg.path}</p>
-                  </div>
-                  <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-medium shrink-0", categoryColor[cfg.category] || "bg-gray-100 text-gray-600")}>
-                    {categoryLabel[cfg.category] || cfg.category}
-                  </span>
-                  {cfg.exists && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="文件存在" />}
-                  {!cfg.exists && <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0" title="文件不存在" />}
-                </div>
-                {cfg.exists && (
-                  <div className="flex items-center gap-1 ml-2 shrink-0">
-                    <button onClick={() => handleView(cfg)}
-                      className="rounded-md px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-surface-700 transition-colors">
-                      <Eye className="h-3.5 w-3.5 inline mr-1" />查看
-                    </button>
-                    <button onClick={() => handleEdit(cfg)}
-                      className="rounded-md px-2 py-1 text-xs text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
-                      <Edit3 className="h-3.5 w-3.5 inline mr-1" />编辑
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* File Viewer Modal */}
-      {viewingFile && (
-        <FileModal title={`查看: ${viewingFile.name}`} onClose={() => setViewingFile(null)}>
-          {viewingFile.keys && viewingFile.keys.length > 0 && (
-            <div className="mb-4 space-y-1">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">配置项</p>
-              {viewingFile.keys.map((k) => (
-                <div key={k.key} className="flex items-center justify-between rounded-md bg-gray-50 dark:bg-surface-800/50 px-3 py-1.5">
-                  <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{k.key}</span>
-                  <span className="text-xs font-mono text-gray-500">{k.value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <pre className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-surface-800/50 rounded-lg p-4 max-h-64 overflow-auto whitespace-pre-wrap">
-            {viewingFile.content || "(空文件)"}
-          </pre>
-        </FileModal>
-      )}
-
-      {/* File Editor Modal */}
-      {editingFile && (
-        <FileModal title={`编辑: ${editingFile.name}`} onClose={() => setEditingFile(null)}>
-          <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)}
-            className="input-field font-mono text-xs h-80 resize-none" />
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setEditingFile(null)} className="btn-secondary text-sm">取消</button>
-            <button onClick={handleSaveEdit} disabled={savingFile}
-              className="btn-primary text-sm flex items-center gap-1.5">
-              <Save className="h-3.5 w-3.5" />{savingFile ? "保存中..." : "保存"}
-            </button>
-          </div>
-        </FileModal>
-      )}
-    </div>
-  );
-}
-
-function FileModal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl max-h-[85vh] animate-slide-up rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/95 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-surface-800/60">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-700">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <div className="px-6 py-4 overflow-y-auto">{children}</div>
+      <div className="flex-1 overflow-y-auto p-5">
+        {tab === "codex" ? <CodexTab /> : <ClaudeTab />}
       </div>
     </div>
   );
 }
 
-// ── Codex Profile Manager ─────────────────────────────────────
-
-function CodexProfileManager() {
+function CodexTab() {
   const [status, setStatus] = useState<CodexStatus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newKey, setNewKey] = useState("");
-  const [newUrl, setNewUrl] = useState("https://api.openai.com/v1");
-  const [newModel, setNewModel] = useState("gpt-5");
-  const [msg, setMsg] = useState<{type:"ok"|"err",text:string}|null>(null);
-  const [switchingId, setSwitchingId] = useState<string|null>(null);
+  const [name, setName] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("https://api.openai.com/v1");
+  const [model, setModel] = useState("gpt-5");
+  const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
 
-  const refresh = async () => {
-    setLoading(true);
-    try { setStatus(await getCodexStatus()); } catch(e) {}
-    setLoading(false);
-  };
-
+  const refresh = async () => { try { setStatus(await getCodexStatus()); } catch {} setLoading(false); };
   useEffect(() => { refresh(); }, []);
 
+  const showMsg = (t: "ok" | "err", text: string) => { setMsg({ t, text }); setTimeout(() => setMsg(null), 2500); };
+
   const handleAdd = async () => {
-    if (!newName.trim()) return;
-    try {
-      await addCodexProfile(newName.trim(), newKey.trim(), newUrl.trim(), newModel.trim());
-      setShowAdd(false); setNewName(""); setNewKey("");
-      await refresh();
-      setMsg({type:"ok",text:"已添加"});
-    } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
-    setTimeout(()=>setMsg(null),2000);
+    if (!name.trim() || !apiKey.trim()) return;
+    try { await addCodexProfile(name.trim(), apiKey.trim(), baseUrl.trim(), model.trim()); setShowAdd(false); setName(""); setApiKey(""); await refresh(); showMsg("ok", "ok"); }
+    catch (e: any) { showMsg("err", e.toString()); }
   };
 
-  const handleSwitch = async (id:string) => {
+  const handleSwitch = async (id: string) => {
     setSwitchingId(id);
-    try {
-      await switchCodexProfile(id);
-      await refresh();
-      setMsg({type:"ok",text:"已切换"});
-    } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
+    try { await switchCodexProfile(id); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); }
     setSwitchingId(null);
   };
 
-  const handleBackup = async () => {
-    try { await backupCodexOfficial(); await refresh(); setMsg({type:"ok",text:"已备份官方配置"}); } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
-    setTimeout(()=>setMsg(null),2000);
-  };
+  const handleDelete = async (id: string) => { try { await deleteCodexProfile(id); await refresh(); } catch {} };
+  const handleBackup = async () => { try { await backupCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
+  const handleRestore = async () => { try { await restoreCodexOfficial(); await refresh(); showMsg("ok", "ok"); } catch (e: any) { showMsg("err", e.toString()); } };
 
-  const handleRestore = async () => {
-    try { await restoreCodexOfficial(); await refresh(); setMsg({type:"ok",text:"已恢复官方配置"}); } catch(e:any) { setMsg({type:"err",text:e.toString()}); }
-    setTimeout(()=>setMsg(null),2000);
-  };
-
-  const handleDelete = async (id:string) => {
-    try { await deleteCodexProfile(id); await refresh(); } catch(e:any) {}
-  };
+  if (loading) return <div className="flex justify-center py-16"><div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-500" /></div>;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-surface-700/60 bg-white dark:bg-surface-900/60 backdrop-blur-xl border-l-4 border-l-indigo-500 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-surface-800/60">
-        <div className="flex items-center gap-3">
-          <Braces className="h-5 w-5 text-indigo-500" />
-          <div><h2 className="text-base font-semibold text-gray-900 dark:text-white">Codex 配置切换</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">管理 .codex/auth.json & config.toml，像 ccswitch 一样切换</p></div>
+    <div className="max-w-3xl space-y-5">
+      {msg && <div className={cn("text-sm px-4 py-2.5 rounded-xl", msg.t === "ok" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400")}>{msg.text}</div>}
+      <div className="rounded-xl border border-gray-200 dark:border-surface-700/60 p-4">
+        <div className="flex items-center justify-between">
+          <div><p className="text-sm font-semibold text-gray-800 dark:text-gray-200">Codex 官方配置</p><p className="text-xs text-gray-400 mt-0.5">{status?.backup_exists ? "已备份，可随时恢复" : "尚未备份，建议先备份"}</p></div>
+          <div className="flex gap-2">
+            <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1"><Save className="h-3.5 w-3.5" />备份</button>
+            <button onClick={handleRestore} disabled={!status?.backup_exists} className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-40"><RotateCcw className="h-3.5 w-3.5" />恢复</button>
+          </div>
         </div>
+        {status && (
+          <div className="grid grid-cols-2 gap-3 text-sm mt-3 pt-3 border-t border-gray-100 dark:border-surface-700/60">
+            <div><span className="text-gray-400">当前 auth.json:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_auth?.slice(0, 40) || "(空)"}</span></div>
+            <div><span className="text-gray-400">当前 config.toml:</span> <span className="font-mono text-xs text-gray-500 truncate block">{status.current_config?.slice(0, 40) || "(空)"}</span></div>
+          </div>
+        )}
       </div>
-
-      <div className="px-6 py-4 space-y-3">
-        {msg && <div className={cn("text-xs px-3 py-2 rounded-lg",msg.type==="ok"?"bg-emerald-50 text-emerald-700":"bg-red-50 text-red-600")}>{msg.text}</div>}
-
-        {/* Official backup row */}
-        <div className="flex items-center gap-2">
-          <button onClick={handleBackup} className="btn-secondary text-xs flex items-center gap-1">
-            <Save className="h-3 w-3" />备份当前为官方
-          </button>
-          <button onClick={handleRestore} disabled={!status?.backup_exists}
-            className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-40">
-            <RotateCcw className="h-3 w-3" />恢复官方
-          </button>
-          <span className="text-[10px] text-gray-400 ml-auto">
-            {status?.backup_exists ? '✅ 已备份' : '⚠️ 未备份'}
-          </span>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">自定义配置方案</h3>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline"><Plus className="h-3.5 w-3.5" />新增方案</button>
         </div>
-
-        {/* Profile list */}
-        {status?.profiles.length === 0 ? (
-          <div className="text-center py-6 text-sm text-gray-400">暂无配置方案，点击下方添加</div>
+        {(!status?.profiles || status.profiles.length === 0) && !showAdd ? (
+          <div className="text-center py-10 text-sm text-gray-400 border-2 border-dashed border-gray-200 dark:border-surface-700 rounded-xl">暂无自定义方案，点击右上角新增</div>
         ) : (
-          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+          <div className="space-y-2">
             {status?.profiles.map((p: CodexProfile) => (
-              <div key={p.id} className={cn("flex items-center justify-between rounded-lg px-3 py-2.5 border transition-colors",
-                status.active_id === p.id ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-500/10" : "border-gray-100 dark:border-surface-700 bg-gray-50 dark:bg-surface-800/30")}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{p.name}</span>
-                    {status.active_id === p.id && <span className="rounded bg-emerald-500 px-1.5 py-0 text-[9px] text-white font-medium">当前</span>}
-                  </div>
-                  <div className="flex gap-2 mt-0.5">
-                    <span className="text-[10px] text-gray-400 font-mono">{p.model}</span>
-                    <span className="text-[10px] text-gray-400 font-mono truncate">{p.base_url}</span>
-                  </div>
+              <div key={p.id} className={cn("flex items-center justify-between rounded-xl border p-4",
+                status.active_id === p.id ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-500/5" : "border-gray-100 dark:border-surface-700 bg-gray-50/50 dark:bg-surface-800/30")}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2"><span className="text-sm font-medium text-gray-800 dark:text-gray-200">{p.name}</span>
+                    {status.active_id === p.id && <span className="rounded-full bg-emerald-500 px-2 py-0 text-[10px] font-medium text-white">当前</span>}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1"><span className="text-xs text-gray-400 font-mono">{p.model}</span><span className="text-xs text-gray-400 font-mono truncate max-w-[300px]">{p.base_url}</span></div>
                 </div>
-                <div className="flex items-center gap-1 ml-2 shrink-0">
+                <div className="flex items-center gap-2 ml-3 shrink-0">
                   <button onClick={() => handleSwitch(p.id)} disabled={switchingId === p.id || status.active_id === p.id}
-                    className={cn("rounded-md px-2.5 py-1 text-[10px] font-medium transition-all",
-                      status.active_id === p.id ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
-                        : "bg-indigo-500 text-white hover:bg-indigo-600")}>
-                    {switchingId === p.id ? "..." : status.active_id === p.id ? "已激活" : "切换"}
+                    className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                      status.active_id === p.id ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 cursor-default" : "bg-indigo-500 text-white hover:bg-indigo-600")}>
+                    {switchingId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : status.active_id === p.id ? "已激活" : "切换"}
                   </button>
-                  <button onClick={() => handleDelete(p.id)}
-                    className="rounded-md px-1.5 py-1 text-[10px] text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                    <X className="h-3 w-3" />
-                  </button>
+                  <button onClick={() => handleDelete(p.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"><X className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {/* Add button / form */}
-        {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="w-full rounded-lg border-2 border-dashed border-gray-200 dark:border-surface-700 py-2.5 text-xs text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors">
-            <Plus className="h-3.5 w-3.5 inline mr-1" />新增配置方案
-          </button>
-        ) : (
-          <div className="rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-500/5 p-4 space-y-3">
-            <input type="text" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="方案名称（如：公司中转）" className="input-field text-sm" />
-            <input type="password" value={newKey} onChange={e=>setNewKey(e.target.value)} placeholder="API Key" className="input-field text-sm" />
-            <input type="text" value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="Base URL" className="input-field text-sm" />
-            <input type="text" value={newModel} onChange={e=>setNewModel(e.target.value)} placeholder="模型名" className="input-field text-sm" />
-            <div className="flex gap-2">
-              <button onClick={() => setShowAdd(false)} className="btn-secondary text-xs flex-1">取消</button>
-              <button onClick={handleAdd} className="btn-primary text-xs flex-1">添加</button>
+        {showAdd && (
+          <div className="rounded-xl border-2 border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 mt-3 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs text-gray-500 mb-1 block">方案名称</label><input value={name} onChange={e => setName(e.target.value)} placeholder="公司中转" className="input-field text-sm" /></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">模型</label><input value={model} onChange={e => setModel(e.target.value)} placeholder="gpt-5" className="input-field text-sm" /></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-..." className="input-field text-sm" /></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className="input-field text-sm" /></div>
             </div>
+            <div className="flex justify-end gap-2"><button onClick={() => setShowAdd(false)} className="btn-secondary text-sm">取消</button><button onClick={handleAdd} className="btn-primary text-sm">添加方案</button></div>
           </div>
         )}
       </div>
@@ -827,5 +128,42 @@ function CodexProfileManager() {
   );
 }
 
-function Plus({className}:{className?:string}){return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>}
-function X({className}:{className?:string}){return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>}
+function ClaudeTab() {
+  const { settings } = useSettingsStore();
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ t: "ok" | "err"; text: string } | null>(null);
+  const [claudeModel, setClaudeModel] = useState(settings.claude_model || "claude-opus-4-7-20250514");
+  const [claudeKey, setClaudeKey] = useState(settings.claude_api_key || "");
+  const [claudeUrl, setClaudeUrl] = useState(settings.claude_base_url || "https://api.anthropic.com/v1");
+
+  const showMsg = (t: "ok" | "err", text: string) => { setMsg({ t, text }); setTimeout(() => setMsg(null), 2500); };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try { await setSetting("claude_model", claudeModel); await setSetting("claude_api_key", claudeKey); await setSetting("claude_base_url", claudeUrl); showMsg("ok", "ok"); }
+    catch (e: any) { showMsg("err", e.toString()); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="max-w-3xl space-y-5">
+      {msg && <div className={cn("text-sm px-4 py-2.5 rounded-xl", msg.t === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600")}>{msg.text}</div>}
+      <div className="rounded-xl border border-gray-200 dark:border-surface-700/60 p-4">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Claude 官方配置</p>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div><span className="text-gray-400">默认模型:</span> <span className="font-mono text-gray-700 dark:text-gray-300">claude-opus-4-7-20250514</span></div>
+          <div><span className="text-gray-400">API 地址:</span> <span className="font-mono text-gray-700 dark:text-gray-300">api.anthropic.com</span></div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 p-4">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">自定义中转配置</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs text-gray-500 mb-1 block">模型</label><input value={claudeModel} onChange={e => setClaudeModel(e.target.value)} className="input-field text-sm font-mono" /></div>
+          <div><label className="text-xs text-gray-500 mb-1 block">API Key</label><input type="password" value={claudeKey} onChange={e => setClaudeKey(e.target.value)} placeholder="sk-ant-..." className="input-field text-sm" /></div>
+          <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Base URL</label><input value={claudeUrl} onChange={e => setClaudeUrl(e.target.value)} className="input-field text-sm font-mono" /></div>
+        </div>
+        <div className="flex justify-end mt-3"><button onClick={handleSave} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5"><Save className="h-3.5 w-3.5" />{saving ? "..." : "保存"}</button></div>
+      </div>
+    </div>
+  );
+}
