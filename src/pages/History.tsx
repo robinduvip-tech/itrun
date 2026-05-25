@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, Check, X, Clock } from "lucide-react";
 import { useHistoryStore } from "@/stores/historyStore";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ export default function History() {
   const totalCount = useHistoryStore((s) => s.totalCount);
   const isLoading = useHistoryStore((s) => s.isLoading);
   const filters = useHistoryStore((s) => s.filters);
+  const loadHistory = useHistoryStore((s) => s.loadHistory);
   const loadMore = useHistoryStore((s) => s.loadMore);
   const setFilter = useHistoryStore((s) => s.setFilter);
   const getDetail = useHistoryStore((s) => s.getDetail);
@@ -16,6 +17,8 @@ export default function History() {
   const closeDetail = useHistoryStore((s) => s.closeDetail);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
   const hasMore = entries.length < totalCount;
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   return (
     <div className="flex h-full bg-white dark:bg-surface-950">
