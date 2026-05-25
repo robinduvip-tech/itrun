@@ -36,7 +36,7 @@ pub async fn get_settings(
 
     // Ensure defaults exist
     if !settings.contains_key("proxy_port") {
-        settings.insert("proxy_port".to_string(), "9876".to_string());
+        settings.insert("proxy_port".to_string(), "9877".to_string());
     }
     if !settings.contains_key("theme") {
         settings.insert("theme".to_string(), "light".to_string());
