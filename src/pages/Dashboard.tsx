@@ -14,6 +14,7 @@ export default function Dashboard() {
   const startProxy = useProxyStore((s) => s.startProxy);
   const stopProxy = useProxyStore((s) => s.stopProxy);
   const proxyLoading = useProxyStore((s) => s.isLoading);
+  const proxyError = useProxyStore((s) => s.error);
   const proxyPort = useSettingsStore((s) => s.proxyPort);
 
   const handleToggle = () => {
@@ -38,6 +39,7 @@ export default function Dashboard() {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {proxyError && <div className="text-xs text-red-500 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">{proxyError}</div>}
         <div className="grid grid-cols-4 gap-3">
           <MiniStat icon={<Activity className="h-4 w-4" />} label="请求数" value={stats ? String(stats.total_requests) : "-"} color="text-indigo-500" bg="bg-indigo-50 dark:bg-indigo-500/10" />
           <MiniStat icon={<Zap className="h-4 w-4" />} label="Token" value={stats ? `${(stats.total_tokens/1000).toFixed(0)}K` : "-"} color="text-amber-500" bg="bg-amber-50 dark:bg-amber-500/10" />

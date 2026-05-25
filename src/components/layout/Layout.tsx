@@ -1,30 +1,15 @@
 import { Outlet } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Square, X, Copy } from "lucide-react";
 import IconBar from "./IconBar";
-import { useProxyStore } from "@/stores/proxyStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function Layout() {
-  const startProxy = useProxyStore((s) => s.startProxy);
-  const refreshStatus = useProxyStore((s) => s.refreshStatus);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
-  const proxyPort = useSettingsStore((s) => s.proxyPort);
-  const settingsLoaded = useSettingsStore((s) => !s.isLoading);
-  const autoStartAttempted = useRef(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
-
-  useEffect(() => {
-    if (settingsLoaded && !autoStartAttempted.current) {
-      autoStartAttempted.current = true;
-      refreshStatus().then(() => {
-        if (!useProxyStore.getState().isRunning) startProxy(proxyPort);
-      });
-    }
-  }, [settingsLoaded]);
 
   const handleMinimize = () => {
     getCurrentWindow().minimize();
