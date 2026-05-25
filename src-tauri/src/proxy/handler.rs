@@ -250,14 +250,10 @@ pub async fn responses(
     headers: HeaderMap,
     Json(mut body): Json<Value>,
 ) -> impl IntoResponse {
-    // /v1/responses is the Codex Responses API endpoint
-    // Convert to chat format: input→messages, model from body
     let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-4o".to_string());
     let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    // Convert Codex responses format to chat completions format
-    // Codex: {"model":"...", "input":"hello"}
-    // Chat:   {"model":"...", "messages":[{"role":"user","content":"hello"}]}
+    // Convert Codex responses format → chat format
     if let Some(obj) = body.as_object_mut() {
         if !obj.contains_key("messages") {
             if let Some(input) = obj.remove("input") {
@@ -265,7 +261,6 @@ pub async fn responses(
                 obj.insert("messages".to_string(), json!([{"role": "user", "content": content}]));
             }
         }
-        // Some Codex responses calls use "instructions" instead
         if !obj.contains_key("messages") {
             if let Some(instructions) = obj.remove("instructions") {
                 obj.insert("messages".to_string(), json!([{"role": "system", "content": instructions}]));
@@ -273,25 +268,8 @@ pub async fn responses(
         }
     }
 
-    // Try configured provider
-    if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
-        if stream {
-            match provider.chat_completion_stream(&actual_model, body).await {
-                Ok(s) => {
-                    let sse_stream = sse::create_sse_stream(s, String::new());
-                    return Response::builder().status(200).header("Content-Type", "text/event-stream").body(Body::from_stream(sse_stream)).unwrap();
-                }
-                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
-            }
-        } else {
-            match provider.chat_completion(&actual_model, body).await {
-                Ok(r) => return JsonResponse(r).into_response(),
-                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
-            }
-        }
-    }
-
-    // Transparent proxy via chat completions
+    // For Codex responses, always use transparent proxy with Codex's own key
+    // (not the provider's key — Codex sends its own auth)
     match transparent_proxy(&headers, &body, &model_name, stream, "/chat/completions").await {
         Ok(r) => r,
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
