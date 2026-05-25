@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, command};
+use tauri::command;
 
 use crate::proxy::ProxyServer;
 
@@ -14,7 +14,7 @@ pub struct ProxyStatus {
 }
 
 #[command]
-pub async fn start_proxy(port: u16, _app_handle: AppHandle) -> Result<u16, String> {
+pub async fn start_proxy(port: u16) -> Result<u16, String> {
     let server = ProxyServer::global();
     server.start(port).await?;
     Ok(server.port())
