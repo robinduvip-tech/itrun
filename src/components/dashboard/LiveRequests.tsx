@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Check, X, Clock } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, X, Clock, ChevronRight } from "lucide-react";
 import { useHistoryStore } from "@/stores/historyStore";
 import { useProxyStore } from "@/stores/proxyStore";
 import { cn, formatTokens, formatLatency, formatRelativeTime, truncate } from "@/lib/utils";
@@ -7,20 +7,23 @@ import { cn, formatTokens, formatLatency, formatRelativeTime, truncate } from "@
 export default function LiveRequests() {
   const entries = useHistoryStore((s) => s.entries);
   const loadHistory = useHistoryStore((s) => s.loadHistory);
+  const getDetail = useHistoryStore((s) => s.getDetail);
+  const selectedDetail = useHistoryStore((s) => s.selectedDetail);
   const isLoading = useHistoryStore((s) => s.isLoading);
+  const isDetailLoading = useHistoryStore((s) => s.isDetailLoading);
+  const closeDetail = useHistoryStore((s) => s.closeDetail);
   const isRunning = useProxyStore((s) => s.isRunning);
 
-  // Auto-refresh every 3 seconds when proxy is running
   useEffect(() => {
     if (!isRunning) return;
     loadHistory();
-    const interval = setInterval(() => {
-      loadHistory();
-    }, 3000);
+    const interval = setInterval(() => loadHistory(), 3000);
     return () => clearInterval(interval);
   }, [isRunning, loadHistory]);
 
   const recentEntries = entries.slice(0, 10);
+
+  const handleClick = (id: string) => { getDetail(id); };
 
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-surface-800/60 bg-gray-50 dark:bg-surface-900/60 backdrop-blur-xl">

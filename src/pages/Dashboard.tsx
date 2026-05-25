@@ -1,25 +1,41 @@
-import { Activity, Zap, Clock, Server as ServerIcon } from "lucide-react";
+import { Activity, Zap, Clock, Server as ServerIcon, Play, Square } from "lucide-react";
 import TokenChart from "@/components/dashboard/TokenChart";
 import LatencyChart from "@/components/dashboard/LatencyChart";
 import LiveRequests from "@/components/dashboard/LiveRequests";
 import { useStats } from "@/hooks/useStats";
 import { useProxyStore } from "@/stores/proxyStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { stats, dailyStats, providerLatencyStats, isLoading } = useStats();
   const isRunning = useProxyStore((s) => s.isRunning);
   const port = useProxyStore((s) => s.port);
+  const startProxy = useProxyStore((s) => s.startProxy);
+  const stopProxy = useProxyStore((s) => s.stopProxy);
+  const proxyLoading = useProxyStore((s) => s.isLoading);
+  const proxyPort = useSettingsStore((s) => s.proxyPort);
+
+  const handleToggle = () => {
+    if (isRunning) stopProxy(); else startProxy(proxyPort);
+  };
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-surface-950">
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-gray-100 dark:border-surface-800/60 px-5">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 dark:border-surface-800/60 px-5">
         <span className={cn("flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
           isRunning ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
             : "bg-gray-100 text-gray-500 dark:bg-surface-800 dark:text-gray-400")}>
           <span className={cn("h-1.5 w-1.5 rounded-full", isRunning ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
           {isRunning ? `代理运行中 :${port}` : "代理已停止"}
         </span>
+        <button onClick={handleToggle} disabled={proxyLoading}
+          className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+            isRunning ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400"
+              : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400")}>
+          {isRunning ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {isRunning ? "停止" : "启动"}
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         <div className="grid grid-cols-4 gap-3">
