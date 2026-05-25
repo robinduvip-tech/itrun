@@ -373,3 +373,30 @@ pub fn error_response(status: impl Into<StatusCode>, msg: &str) -> Response {
         ))
         .unwrap()
 }
+
+pub async fn catch_responses(
+    headers: HeaderMap,
+    axum::extract::Path(path): axum::extract::Path<String>,
+    method: axum::http::Method,
+    body: String,
+) -> Response {
+    tracing::warn!("CATCH: {} /v1/responses/{} | body: {}", method, path, &body[..body.len().min(200)]);
+    let body_value: Value = serde_json::from_str(&body).unwrap_or(json!({}));
+    let model_name = transform::extract_model_name(&body_value).unwrap_or_else(|| "gpt-4o".to_string());
+    let stream = body_value.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    // Convert and forward
+    let mut converted = body_value.clone();
+    if let Some(obj) = converted.as_object_mut() {
+        if !obj.contains_key("messages") {
+            if let Some(input) = obj.remove("input") {
+                obj.insert("messages".to_string(), json!([{"role": "user", "content": input}]));
+            }
+        }
+    }
+
+    match transparent_proxy(&headers, &converted, &model_name, stream, "/chat/completions").await {
+        Ok(r) => r,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
+    }
+}
