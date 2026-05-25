@@ -111,8 +111,9 @@ fn write_codex_config(base_url: &str, model: &str, custom_name: &str) -> Result<
         String::new()
     };
 
-    // Extract just the model name for the name field (e.g., "deepseek/deepseek-v4-pro" → "deepseek-v4-pro")
-    let name = custom_name.rsplit('/').next().unwrap_or(custom_name);
+    // Extract just the model name (e.g., "deepseek/deepseek-v4-pro" → "deepseek-v4-pro")
+    let model_name = model.rsplit('/').next().unwrap_or(model);
+    let name = if custom_name.is_empty() { model_name } else { custom_name }.to_string();
 
     let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
     let mut has_model_provider = false;
@@ -150,7 +151,7 @@ fn write_codex_config(base_url: &str, model: &str, custom_name: &str) -> Result<
 
     // Apply changes after the loop
     if let Some(i) = model_provider_line { lines[i] = "model_provider = \"custom\"".into(); }
-    if let Some(i) = model_line { lines[i] = format!("model = \"{}\"", model); }
+    if let Some(i) = model_line { lines[i] = format!("model = \"{}\"", model_name); }
 
     // If custom section end not found, it goes to end of file
     if custom_end.is_none() {
@@ -160,7 +161,7 @@ fn write_codex_config(base_url: &str, model: &str, custom_name: &str) -> Result<
     // Add missing top-level fields before [model_providers]
     let insert_pos = provider_header_idx.unwrap_or(0);
     if !has_model_provider { lines.insert(insert_pos, "model_provider = \"custom\"".into()); }
-    if !has_model { lines.insert(insert_pos + 1, format!("model = \"{}\"", model)); }
+    if !has_model { lines.insert(insert_pos + 1, format!("model = \"{}\"", model_name)); }
     if !has_disable_storage { lines.insert(insert_pos + 2, "disable_response_storage = true".into()); }
     if !has_effort { lines.insert(insert_pos + 3, "model_reasoning_effort = \"medium\"".into()); }
 

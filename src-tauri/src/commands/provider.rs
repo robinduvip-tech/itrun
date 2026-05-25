@@ -252,3 +252,11 @@ pub async fn debug_providers(db: State<'_, Arc<Mutex<Connection>>>) -> Result<St
     }
     Ok(result)
 }
+
+#[command]
+pub async fn diagnose_history_db(db: State<'_, Arc<Mutex<Connection>>>) -> Result<String, String> {
+    let conn = db.lock();
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM request_history", [], |r| r.get(0)).unwrap_or(-1);
+    let provider_count: i64 = conn.query_row("SELECT COUNT(*) FROM providers", [], |r| r.get(0)).unwrap_or(-1);
+    Ok(format!("request_history: {} rows, providers: {} rows", count, provider_count))
+}

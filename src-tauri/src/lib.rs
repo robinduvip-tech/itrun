@@ -93,6 +93,7 @@ pub fn run() {
             commands::provider::fetch_provider_models,
             commands::provider::list_all_models_cmd,
             commands::provider::debug_providers,
+            commands::provider::diagnose_history_db,
             commands::provider::test_provider_health,
             commands::provider::check_all_providers_health,
             commands::history::get_history,
