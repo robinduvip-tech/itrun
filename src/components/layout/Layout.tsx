@@ -24,7 +24,8 @@ export default function Layout() {
       refreshStatus().then(() => {
         const running = useProxyStore.getState().isRunning;
         if (!running) {
-          startProxy(proxyPort).then(() => hasAutoStarted(true));
+          console.log("Auto-starting proxy on port", proxyPort);
+          startProxy(proxyPort).catch((e: any) => console.error("Auto-start failed:", e));
         }
       });
     }

@@ -17,9 +17,8 @@ pub fn build_router() -> Router {
         .route("/v1/responses", axum::routing::post(handler::responses))
         .route("/v1/models", axum::routing::get(handler::list_models))
         .route("/v1/embeddings", axum::routing::post(handler::embeddings))
-        .route("/v1/responses/{*path}", axum::routing::any(handler::catch_responses))
         .route("/health", axum::routing::get(|| async { "OK" }))
-        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024)) // 50MB for Codex
+        .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
 }

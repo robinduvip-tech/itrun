@@ -18,7 +18,14 @@ export default function Dashboard() {
   const proxyPort = useSettingsStore((s) => s.proxyPort);
 
   const handleToggle = () => {
-    if (isRunning) stopProxy(); else startProxy(proxyPort);
+    console.log("Toggle proxy. isRunning:", isRunning, "port:", proxyPort);
+    if (isRunning) {
+      stopProxy();
+    } else {
+      startProxy(proxyPort).catch((e: any) => {
+        console.error("Start proxy failed:", e);
+      });
+    }
   };
 
   return (
