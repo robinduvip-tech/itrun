@@ -49,13 +49,11 @@ fn extract_auth_key(headers: &HeaderMap) -> Option<String> {
 }
 
 fn extract_base_url(_headers: &HeaderMap, model: &str) -> String {
-    // Detect provider from model prefix or name
     if model.starts_with("claude") || model.contains("claude") {
         "https://api.anthropic.com/v1".to_string()
     } else if model.starts_with("gemini") || model.contains("gemini") {
         "https://generativelanguage.googleapis.com/v1beta".to_string()
     } else {
-        // Default to OpenAI-compatible
         "https://api.openai.com/v1".to_string()
     }
 }
@@ -268,8 +266,26 @@ pub async fn responses(
         }
     }
 
-    // For Codex responses, always use transparent proxy with Codex's own key
-    // (not the provider's key — Codex sends its own auth)
+    // Try configured provider first (uses its own base_url and API key)
+    if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+        if stream {
+            match provider.chat_completion_stream(&actual_model, body).await {
+                Ok(s) => {
+                    let sse = sse::create_sse_stream(s, String::new());
+                    return Response::builder().status(200).header("Content-Type", "text/event-stream")
+                        .body(Body::from_stream(sse)).unwrap();
+                }
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+            }
+        } else {
+            match provider.chat_completion(&actual_model, body).await {
+                Ok(r) => return JsonResponse(r).into_response(),
+                Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+            }
+        }
+    }
+
+    // Fallback: transparent proxy using Codex's own key
     match transparent_proxy(&headers, &body, &model_name, stream, "/chat/completions").await {
         Ok(r) => r,
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
