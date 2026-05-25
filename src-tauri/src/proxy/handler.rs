@@ -30,7 +30,7 @@ pub fn set_handler_db(conn: Arc<Mutex<Connection>>) {
 fn update_history_error(request_id: &str, error: &str) {
     if let Some(conn) = get_db_conn() {
         let conn = conn.lock();
-        let _ = history::update_response(&conn, request_id, "error", 0, 0, Some(error));
+        let _ = history::update_response(&conn, request_id, "error", 0, 0, Some(&format!("[ERROR] {}", error)));
     }
 }
 
@@ -190,9 +190,27 @@ pub async fn chat_completions(
     }
 
     // Fallback: transparent proxy using client's own API key
+    log_transparent_proxy(&request_id, &model_name, "chat_completions");
     match transparent_proxy(&headers, &body, &model_name, stream, "/chat/completions").await {
-        Ok(response) => response,
-        Err(e) => error_response(StatusCode::BAD_REQUEST, &format!("No provider configured for '{}' and transparent proxy failed: {}", model_name, e)),
+        Ok(response) => {
+            if let Some(conn) = get_db_conn() {
+                let conn = conn.lock();
+                let _ = history::update_response(&conn, &request_id, "success", 0, 0, Some("transparent proxy"));
+            }
+            response
+        }
+        Err(e) => {
+            update_history_error(&request_id, &e);
+            error_response(StatusCode::BAD_REQUEST, &format!("No provider configured for '{}' and transparent proxy failed: {}", model_name, e))
+        }
+    }
+}
+
+fn log_transparent_proxy(request_id: &str, model: &str, req_type: &str) {
+    if let Some(conn) = get_db_conn() {
+        let conn = conn.lock();
+        let preview = json!({"model": model, "type": "transparent_proxy"}).to_string();
+        let _ = history::insert_request(&conn, request_id, req_type, "transparent", model, &preview);
     }
 }
 
