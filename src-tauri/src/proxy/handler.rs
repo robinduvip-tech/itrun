@@ -415,3 +415,40 @@ pub async fn catch_responses(
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
     }
 }
+
+/// Catch-all handler: transparent passthrough for any unknown path
+pub async fn catch_all(
+    headers: HeaderMap,
+    method: axum::http::Method,
+    uri: axum::http::Uri,
+    body: String,
+) -> Response {
+    let path = uri.path().to_string();
+    tracing::info!("CATCH-ALL: {} {} body_len={}", method, path, body.len());
+
+    // Try to parse model from body for routing
+    let model = serde_json::from_str::<Value>(&body)
+        .ok()
+        .and_then(|v| v.get("model").and_then(|m| m.as_str()).map(String::from))
+        .unwrap_or_else(|| "gpt-4o".to_string());
+
+    let stream = serde_json::from_str::<Value>(&body)
+        .ok()
+        .and_then(|v| v.get("stream").and_then(|s| s.as_bool()))
+        .unwrap_or(false);
+
+    // Determine upstream path
+    let upstream_path = if path.contains("/chat/completions") || path.contains("/responses") || path.contains("/completions") {
+        "/chat/completions"
+    } else if path.contains("/models") {
+        "/models"
+    } else {
+        "/chat/completions" // default
+    };
+
+    // Try transparent proxy
+    match transparent_proxy(&headers, &serde_json::from_str(&body).unwrap_or(json!({})), &model, stream, upstream_path).await {
+        Ok(r) => r,
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &format!("Proxy error: {}", e)),
+    }
+}
