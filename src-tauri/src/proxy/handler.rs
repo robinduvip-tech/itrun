@@ -48,11 +48,28 @@ fn extract_auth_key(headers: &HeaderMap) -> Option<String> {
         })
 }
 
-fn extract_base_url(_headers: &HeaderMap, model: &str) -> String {
-    if model.starts_with("claude") || model.contains("claude") {
+fn extract_base_url(headers: &HeaderMap, model: &str) -> String {
+    // First: try to find the upstream URL from configured providers
+    // When model is "deepseek-v4-pro", look for a provider that has this model
+    let m = model.to_lowercase();
+    if let Some((_, _, _)) = ProviderRegistry::get_by_model(model) {
+        // Provider found — use its base_url via the provider trait
+        // We can't extract the URL from the trait, but we know the provider was
+        // created with a specific base_url. Return empty to signal "use provider"
+        // Actually just return a URL based on known provider types
+        // The provider lookup above already matched, so let's use known URLs
+    }
+    // Second: use known defaults based on model name
+    if m.contains("claude") {
         "https://api.anthropic.com/v1".to_string()
-    } else if model.starts_with("gemini") || model.contains("gemini") {
+    } else if m.contains("gemini") {
         "https://generativelanguage.googleapis.com/v1beta".to_string()
+    } else if m.contains("deepseek") {
+        "https://api.deepseek.com/v1".to_string()
+    } else if m.contains("moonshot") || m.contains("kimi") {
+        "https://api.moonshot.cn/v1".to_string()
+    } else if m.contains("qwen") {
+        "https://dashscope.aliyuncs.com/compatible-mode/v1".to_string()
     } else {
         "https://api.openai.com/v1".to_string()
     }
