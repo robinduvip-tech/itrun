@@ -285,10 +285,31 @@ pub async fn responses(
         }
     }
 
-    // Fallback: transparent proxy using Codex's own key
+    // Always try transparent proxy first for Codex (uses Codex's own API key)
+    // Only fall back to configured provider if transparent proxy fails
     match transparent_proxy(&headers, &body, &model_name, stream, "/chat/completions").await {
-        Ok(r) => r,
-        Err(e) => error_response(StatusCode::BAD_REQUEST, &e),
+        Ok(r) => return r,
+        Err(_transparent_err) => {
+            // Fallback: try configured provider
+            if let Some((_pid, provider, actual_model)) = ProviderRegistry::get_by_model(&model_name) {
+                if stream {
+                    match provider.chat_completion_stream(&actual_model, body).await {
+                        Ok(s) => {
+                            let sse = sse::create_sse_stream(s, String::new());
+                            return Response::builder().status(200).header("Content-Type", "text/event-stream")
+                                .body(Body::from_stream(sse)).unwrap();
+                        }
+                        Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+                    }
+                } else {
+                    match provider.chat_completion(&actual_model, body).await {
+                        Ok(r) => return JsonResponse(r).into_response(),
+                        Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e),
+                    }
+                }
+            }
+            error_response(StatusCode::BAD_REQUEST, "No route available")
+        }
     }
 }
 
