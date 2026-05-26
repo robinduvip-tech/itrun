@@ -67,10 +67,14 @@ async fn transparent_proxy(
     path: &str,
 ) -> Result<Response, String> {
     let api_key = extract_auth_key(headers)
-        .ok_or_else(|| "No API key found — please set Authorization header or configure a Provider in iTrun".to_string())?;
+        .ok_or_else(|| "No API key found".to_string())?;
+
+    let mask_key = || { if api_key.len() > 8 { format!("{}...", &api_key[..8]) } else { api_key.clone() } };
 
     let base_url = extract_base_url(headers, model);
     let url = format!("{}{}", base_url.trim_end_matches('/'), path);
+    tracing::info!("[PROXY] model={} stream={} key={} -> {}", model, stream, mask_key(), url);
+
     let client = reqwest::Client::new();
 
     if stream {
@@ -86,7 +90,7 @@ async fn transparent_proxy(
         let status = response.status();
         if !status.is_success() {
             let err_body = response.text().await.unwrap_or_default();
-            return Err(format!("Upstream error {}: {}", status.as_u16(), err_body));
+            tracing::error!("[PROXY-ERR] status={} body={}", status.as_u16(), &err_body[..err_body.len().min(200)]); return Err(format!("Upstream error {}: {}", status.as_u16(), err_body));
         }
 
         let byte_stream = response.bytes_stream();
@@ -135,6 +139,7 @@ pub async fn chat_completions(
 ) -> impl IntoResponse {
     let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-4o".to_string());
     let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
+    tracing::info!("[chat_completions] model={} stream={}", model_name, stream);
     let request_id = Uuid::new_v4().to_string();
     let timestamp = chrono::Utc::now();
 
@@ -250,6 +255,7 @@ pub async fn responses(
 ) -> impl IntoResponse {
     let model_name = transform::extract_model_name(&body).unwrap_or_else(|| "gpt-4o".to_string());
     let stream = body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false);
+    tracing::info!("[responses] model={} stream={} body_keys={:?}", model_name, stream, body.as_object().map(|o| o.keys().collect::<Vec<_>>()));
 
     // Convert Codex responses format → chat format
     if let Some(obj) = body.as_object_mut() {

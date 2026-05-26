@@ -27,8 +27,6 @@ pub fn build_router() -> Router {
         .route("/chat/completions", axum::routing::post(handler::chat_completions))
         .route("/models", axum::routing::get(handler::list_models))
         .route("/health", axum::routing::get(|| async { "OK" }))
-        // Catch-all must be LAST
-        .route("/{*path}", axum::routing::any(handler::catch_all))
         .layer(RequestBodyLimitLayer::new(50 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
